@@ -170,8 +170,6 @@ namespace ControlTec.Controllers
             if (solicitud == null)
                 return NotFound("Solicitud no encontrada.");
 
-            // Aquí está la corrección importante:
-            // primero garantizamos una lista de Documento, luego proyectamos.
             var documentos = (solicitud.DocumentosCargados ?? new List<Documento>())
                 .Select(d => new
                 {
@@ -241,7 +239,149 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 6. POST: CAMBIAR ESTADO (opcional, si lo usas)
+        // 5.b) GET: LISTA SOLO DE DOCUMENTOS
+        //      api/Solicitudes/{id}/documentos
+        // ======================================
+        [HttpGet("{id}/documentos")]
+        public async Task<ActionResult<IEnumerable<object>>> GetDocumentosSolicitud(int id)
+        {
+            var documentos = await _context.Documentos
+                .Where(d => d.SolicitudId == id)
+                .Select(d => new
+                {
+                    d.Id,
+                    d.Nombre,
+                    d.Tipo,
+                    d.Ruta,
+                    d.SolicitudId
+                })
+                .ToListAsync();
+
+            return Ok(documentos);
+        }
+
+        // ======================================
+        // 5.c) DELETE: ELIMINAR DOCUMENTO DE UNA SOLICITUD
+        //      api/Solicitudes/{id}/documentos/{documentoId}
+        // ======================================
+        [HttpDelete("{id}/documentos/{documentoId}")]
+        public async Task<IActionResult> EliminarDocumento(int id, int documentoId)
+        {
+            var documento = await _context.Documentos
+                .FirstOrDefaultAsync(d => d.Id == documentoId && d.SolicitudId == id);
+
+            if (documento == null)
+                return NotFound("Documento no encontrado para esta solicitud.");
+
+            // Borrar archivo físico si existe
+            var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var relativePath = documento.Ruta?.TrimStart('/')
+                .Replace('/', Path.DirectorySeparatorChar) ?? string.Empty;
+            var physicalPath = Path.Combine(webRoot, relativePath);
+
+            if (System.IO.File.Exists(physicalPath))
+            {
+                System.IO.File.Delete(physicalPath);
+            }
+
+            // Borrar registro en BD
+            _context.Documentos.Remove(documento);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
+
+        // ======================================
+        // 6. GET: FILTRO DE SOLICITUDES
+        //      api/Solicitudes/filtro
+        // ======================================
+        [HttpGet("filtro")]
+        public async Task<ActionResult<IEnumerable<object>>> GetSolicitudesFiltro(
+            [FromQuery] string? estado,
+            [FromQuery] int? servicioId,
+            [FromQuery] int? usuarioId,
+            [FromQuery] DateTime? fechaDesde,
+            [FromQuery] DateTime? fechaHasta)
+        {
+            var query = _context.Solicitudes
+                .Include(s => s.Usuario)
+                .Include(s => s.Servicio)
+                .Include(s => s.HistorialEstados)
+                    .ThenInclude(h => h.Usuario)
+                .AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(estado))
+            {
+                query = query.Where(s => s.Estado.ToLower() == estado.ToLower());
+            }
+
+            if (servicioId.HasValue)
+            {
+                query = query.Where(s => s.ServicioId == servicioId.Value);
+            }
+
+            if (usuarioId.HasValue)
+            {
+                query = query.Where(s => s.UsuarioId == usuarioId.Value);
+            }
+
+            if (fechaDesde.HasValue)
+            {
+                var d = fechaDesde.Value.Date;
+                query = query.Where(s => s.FechaCreacion >= d);
+            }
+
+            if (fechaHasta.HasValue)
+            {
+                var d = fechaHasta.Value.Date.AddDays(1).AddTicks(-1);
+                query = query.Where(s => s.FechaCreacion <= d);
+            }
+
+            var lista = await query
+                .OrderByDescending(s => s.FechaCreacion)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Estado,
+                    s.FechaCreacion,
+
+                    Usuario = s.Usuario == null ? null : new
+                    {
+                        s.Usuario.Id,
+                        s.Usuario.Nombre,
+                        s.Usuario.Correo,
+                        s.Usuario.Roll
+                    },
+
+                    Servicio = s.Servicio == null ? null : new
+                    {
+                        s.Servicio.Id,
+                        s.Servicio.Nombre
+                    },
+
+                    UltimoMovimiento = s.HistorialEstados
+                        .OrderByDescending(h => h.FechaCambio)
+                        .Select(h => new
+                        {
+                            h.EstadoAnterior,
+                            h.EstadoNuevo,
+                            h.Comentario,
+                            h.FechaCambio,
+                            Usuario = h.Usuario == null ? null : new
+                            {
+                                h.Usuario.Id,
+                                h.Usuario.Nombre
+                            }
+                        })
+                        .FirstOrDefault()
+                })
+                .ToListAsync();
+
+            return Ok(lista);
+        }
+
+        // ======================================
+        // 7. POST: CAMBIAR ESTADO
         //      api/Solicitudes/{id}/cambiar-estado
         // ======================================
         [HttpPost("{id}/cambiar-estado")]
@@ -315,30 +455,27 @@ namespace ControlTec.Controllers
             return Ok(resultado);
         }
 
-        // ============================
-        // 6. SUBIR DOCUMENTO A SOLICITUD
-        // ============================
+        // ======================================
+        // 8. POST: SUBIR DOCUMENTO A SOLICITUD
+        //      api/Solicitudes/{id}/documentos
+        // ======================================
         [HttpPost("{id}/documentos")]
-        [Consumes("multipart/form-data")]      // 👈 importante para Swagger
+        [Consumes("multipart/form-data")]
         public async Task<ActionResult<Documento>> SubirDocumento(int id, IFormFile archivo)
         {
             if (archivo == null || archivo.Length == 0)
                 return BadRequest("Debe seleccionar un archivo.");
 
-            // 1. Verificar que la solicitud exista
             var solicitud = await _context.Solicitudes.FindAsync(id);
             if (solicitud == null)
                 return NotFound("Solicitud no encontrada.");
 
-            // 2. Asegurar carpeta de uploads
-            //    OJO: _env.WebRootPath NO puede ser null
             var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var uploadsPath = Path.Combine(webRoot, "uploads", "solicitudes", id.ToString());
 
             if (!Directory.Exists(uploadsPath))
                 Directory.CreateDirectory(uploadsPath);
 
-            // 3. Guardar archivo físico
             var safeFileName = Path.GetFileName(archivo.FileName).Replace(" ", "_");
             var filePath = Path.Combine(uploadsPath, safeFileName);
 
@@ -347,7 +484,6 @@ namespace ControlTec.Controllers
                 await archivo.CopyToAsync(stream);
             }
 
-            // 4. Registrar en la tabla Documentos
             var documento = new Documento
             {
                 Nombre = archivo.FileName,
@@ -359,9 +495,7 @@ namespace ControlTec.Controllers
             _context.Documentos.Add(documento);
             await _context.SaveChangesAsync();
 
-            // 5. Devolver el documento creado
             return Ok(documento);
         }
-
     }
 }
