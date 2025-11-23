@@ -1,11 +1,15 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.IdentityModel.Tokens;
+﻿using System;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using System.Threading.Tasks;
 using ControlTec.Data;
 using ControlTec.Models;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 namespace ControlTec.Controllers
 {
@@ -22,49 +26,100 @@ namespace ControlTec.Controllers
             _configuration = configuration;
         }
 
+        // ============================
         // POST: api/Auth/login
+        // ============================
         [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginRequest model)
+        [AllowAnonymous]
+        public async Task<IActionResult> Login([FromBody] LoginRequest model)
         {
-            // Validar el usuario (asegúrate de que tengas un modelo que reciba el correo y contraseña)
-            var user = _context.Usuarios.FirstOrDefault(u => u.Correo == model.Username && u.Contraseña == model.Password);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            // Buscar usuario por correo y contraseña (en la vida real: contraseña hasheada)
+            var user = await _context.Usuarios
+                .FirstOrDefaultAsync(u =>
+                    u.Correo == model.Correo &&
+                    u.Contraseña == model.Password);
 
             if (user == null)
-            {
-                return Unauthorized("Credenciales incorrectas");
-            }
+                return Unauthorized("Correo o contraseña incorrectos.");
 
-            // Crear una lista de claims (afirmaciones del usuario)
+            // ==============
+            // 1. Claims
+            // ==============
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
                 new Claim(ClaimTypes.Name, user.Nombre),
-                new Claim(ClaimTypes.Role, user.Roll)  // Asumiendo que tienes un campo Roll en el usuario
+                new Claim(ClaimTypes.Email, user.Correo),
+                new Claim(ClaimTypes.Role, user.Roll)
             };
 
-            // Crear la clave secreta para firmar el JWT
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]));
+            // ==============
+            // 2. Clave JWT
+            // ==============
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(_configuration["Jwt:SecretKey"]!)
+            );
 
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-            // Generar el token JWT
+            // ==============
+            // 3. Token
+            // ==============
             var token = new JwtSecurityToken(
                 issuer: _configuration["Jwt:Issuer"],
                 audience: _configuration["Jwt:Audience"],
                 claims: claims,
-                expires: DateTime.Now.AddHours(1),
+                expires: DateTime.UtcNow.AddHours(1),
                 signingCredentials: creds
             );
 
-            // Retornar el token como respuesta
-            return Ok(new { token = new JwtSecurityTokenHandler().WriteToken(token) });
+            var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
+
+            // No devolvemos la contraseña porque en Usuario la marcaste con [JsonIgnore]
+            return Ok(new
+            {
+                token = tokenString,
+                usuario = new
+                {
+                    user.Id,
+                    user.Nombre,
+                    user.Correo,
+                    user.Roll
+                }
+            });
+        }
+
+        // ============================
+        // GET: api/Auth/me
+        // (para probar el token)
+        // ============================
+        [HttpGet("me")]
+        [Authorize]
+        public IActionResult Me()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var nombre = User.FindFirstValue(ClaimTypes.Name);
+            var correo = User.FindFirstValue(ClaimTypes.Email);
+            var rol = User.FindFirstValue(ClaimTypes.Role);
+
+            return Ok(new
+            {
+                Id = userId,
+                Nombre = nombre,
+                Correo = correo,
+                Roll = rol
+            });
         }
     }
 
     public class LoginRequest
     {
-        public string Username { get; set; }
-        public string Password { get; set; }
+        public string Correo { get; set; } = null!;
+        public string Password { get; set; } = null!;
     }
 }

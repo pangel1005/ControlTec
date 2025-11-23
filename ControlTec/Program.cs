@@ -8,9 +8,7 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// =========================
 // 1. AUTENTICACIÓN JWT
-// =========================
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -27,38 +25,41 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
-// =========================
 // 2. DB CONTEXT (SQL SERVER)
-// =========================
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// =========================
 // 3. CONTROLADORES + JSON
-//    (Ignorar ciclos y JSON bonito)
-// =========================
 builder.Services
     .AddControllers()
     .AddJsonOptions(options =>
     {
-        // ? Esto evita los ciclos sin agregar $id / $values
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
         options.JsonSerializerOptions.WriteIndented = true;
-        // (opcional) mantener nombres tal cual en las clases C#
-        // options.JsonSerializerOptions.PropertyNamingPolicy = null;
     });
 
-// =========================
-// 4. SWAGGER + JWT
-// =========================
+// 4. CORS (para que el front pueda llamar a la API)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy
+            // Cambia estos origins por la URL de tu frontend
+            .WithOrigins("https://localhost:5173", "http://localhost:5173")
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    });
+});
+
+// 5. SWAGGER + JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         In = ParameterLocation.Header,
-        Description = "Ingrese el token JWT con el prefijo **Bearer**. Ej: `Bearer eyJhbGci...`",
+        Description = "Token JWT con prefijo **Bearer**. Ej: `Bearer eyJhbGci...`",
         Name = "Authorization",
         Type = SecuritySchemeType.ApiKey
     });
@@ -79,16 +80,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// =========================
-// 5. CONSTRUIR APP
-// =========================
 var app = builder.Build();
 
-// =========================
 // 6. MIDDLEWARE
-// =========================
-
-// Swagger solo en desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -97,14 +91,14 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-app.UseStaticFiles();   // ?? para poder servir /uploads/...
+app.UseStaticFiles();
 
+// CORS antes de auth
+app.UseCors("FrontendPolicy");
 
-// Orden correcto: Autenticación ? Autorización
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Endpoints de controladores
 app.MapControllers();
 
 app.Run();

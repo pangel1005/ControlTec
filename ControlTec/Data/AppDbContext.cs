@@ -1,5 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using ControlTec.Models;
+﻿using ControlTec.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace ControlTec.Data
 {
@@ -7,26 +7,31 @@ namespace ControlTec.Data
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 
-        public DbSet<Usuario> Usuarios { get; set; }
-        public DbSet<Servicio> Servicios { get; set; }
-        public DbSet<Solicitud> Solicitudes { get; set; }
-        public DbSet<Documento> Documentos { get; set; }
-        public DbSet<DocumentoRequerido> DocumentosRequeridos { get; set; }
-        public DbSet<HistorialEstado> HistorialEstados { get; set; }
+        // Tablas
+        public DbSet<Usuario> Usuarios { get; set; } = null!;
+        public DbSet<Servicio> Servicios { get; set; } = null!;
+        public DbSet<Solicitud> Solicitudes { get; set; } = null!;
+        public DbSet<Documento> Documentos { get; set; } = null!;
+        public DbSet<DocumentoRequerido> DocumentosRequeridos { get; set; } = null!;
+        public DbSet<HistorialEstado> HistorialEstados { get; set; } = null!;
 
-
-        // Configuración de las relaciones entre las entidades
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            base.OnModelCreating(modelBuilder);
+
+            // Solicitud 1-N DocumentosCargados
             modelBuilder.Entity<Solicitud>()
                 .HasMany(s => s.DocumentosCargados)
                 .WithOne(d => d.Solicitud)
                 .HasForeignKey(d => d.SolicitudId);
 
+            // Servicio 1-N DocumentosRequeridos
             modelBuilder.Entity<Servicio>()
                 .HasMany(s => s.DocumentosRequeridos)
                 .WithOne(d => d.Servicio)
                 .HasForeignKey(d => d.ServicioId);
+
+            // HistorialEstados
             modelBuilder.Entity<HistorialEstado>(entity =>
             {
                 entity.HasKey(h => h.Id);
@@ -50,12 +55,10 @@ namespace ControlTec.Data
                       .OnDelete(DeleteBehavior.Cascade);
 
                 entity.HasOne(h => h.Usuario)
-                      .WithMany() // si luego quieres una colección, la agregas en Usuario
+                      .WithMany() // si luego quieres lista de movimientos en Usuario, aquí se cambia
                       .HasForeignKey(h => h.UsuarioId)
                       .OnDelete(DeleteBehavior.Restrict);
             });
-
-
         }
     }
 }
