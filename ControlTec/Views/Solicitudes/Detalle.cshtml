@@ -1,0 +1,191 @@
+﻿@{
+    ViewData["Title"] = "Detalle de solicitud";
+    var solicitudId = (int)ViewData["SolicitudId"];
+}
+
+<div class="mb-4">
+    <a href="/Solicitudes" class="btn btn-link">&larr; Volver a mis solicitudes</a>
+</div>
+
+<div id="alertaDetalle" class="alert alert-danger d-none"></div>
+
+<div id="loadingDetalle" class="text-center my-4">
+    <div class="spinner-border" role="status"></div>
+    <p class="mt-2 mb-0">Cargando detalle de la solicitud...</p>
+</div>
+
+<div id="contenidoDetalle" class="d-none">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">Información general</h4>
+                    <p><strong>Número de solicitud:</strong> <span id="solId"></span></p>
+                    <p><strong>Servicio:</strong> <span id="solServicio"></span></p>
+                    <p><strong>Estado actual:</strong> <span id="solEstado" class="badge bg-secondary"></span></p>
+                    <p><strong>Fecha de creación:</strong> <span id="solFecha"></span></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">Solicitante</h4>
+                    <p><strong>Nombre:</strong> <span id="solUsuarioNombre"></span></p>
+                    <p><strong>Correo:</strong> <span id="solUsuarioCorreo"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Documentos -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">Documentos cargados</h4>
+                    <ul id="listaDocumentos" class="list-group small">
+                        <!-- Se llena por JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Historial -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h4 class="card-title mb-3">Historial de estados</h4>
+                    <ul id="listaHistorial" class="list-group small">
+                        <!-- Se llena por JS -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('authToken');
+
+            if (!token) {
+                window.location.href = '/Account/Login';
+                return;
+            }
+
+            const solicitudId = @solicitudId;
+            cargarDetalleSolicitud(token, solicitudId);
+        });
+
+        async function cargarDetalleSolicitud(token, id) {
+            const alerta = document.getElementById('alertaDetalle');
+            const loading = document.getElementById('loadingDetalle');
+            const contenido = document.getElementById('contenidoDetalle');
+
+            alerta.classList.add('d-none');
+            alerta.textContent = '';
+            loading.classList.remove('d-none');
+            contenido.classList.add('d-none');
+
+            try {
+                const resp = await fetch(`/api/Solicitudes/${id}`, {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                loading.classList.add('d-none');
+
+                if (!resp.ok) {
+                    let msg = 'No se pudo cargar el detalle de la solicitud.';
+                    try {
+                        const err = await resp.json();
+                        if (err && err.message) msg = err.message;
+                    } catch { }
+
+                    alerta.textContent = msg;
+                    alerta.classList.remove('d-none');
+                    return;
+                }
+
+                const s = await resp.json();
+
+                // Ajustado a tu SolicitudDetalleDto / SolicitudListaDto
+                const idSol = s.id ?? s.Id;
+                const estado = s.estado ?? s.Estado ?? '—';
+                const fechaRaw = s.fechaCreacion ?? s.FechaCreacion ?? '';
+                const fecha = fechaRaw ? fechaRaw.toString().substring(0, 10) : '—';
+
+                const servicioNombre = s.servicio?.nombre ?? s.Servicio?.Nombre ?? '—';
+                const usuarioNombre = s.usuario?.nombre ?? s.Usuario?.Nombre ?? '—';
+                const usuarioCorreo = s.usuario?.correo ?? s.Usuario?.Correo ?? '—';
+
+                document.getElementById('solId').textContent = idSol;
+                document.getElementById('solServicio').textContent = servicioNombre;
+                document.getElementById('solEstado').textContent = estado;
+                document.getElementById('solFecha').textContent = fecha;
+                document.getElementById('solUsuarioNombre').textContent = usuarioNombre;
+                document.getElementById('solUsuarioCorreo').textContent = usuarioCorreo;
+
+                // Documentos (si tu DTO trae Documentos)
+                const listaDocs = document.getElementById('listaDocumentos');
+                listaDocs.innerHTML = '';
+                const documentos = s.documentos ?? s.Documentos ?? [];
+
+                if (documentos.length === 0) {
+                    listaDocs.innerHTML = '<li class="list-group-item">No hay documentos cargados.</li>';
+                } else {
+                    documentos.forEach(d => {
+                        const nombreDoc = d.nombre ?? d.Nombre ?? 'Documento';
+                        const urlDescarga = d.url ?? d.Url ?? d.ruta ?? d.Ruta ?? '#';
+
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item d-flex justify-content-between align-items-center';
+                        li.innerHTML = `
+                            <span>${nombreDoc}</span>
+                            <a href="${urlDescarga}" class="btn btn-sm btn-outline-secondary" target="_blank">
+                                Ver
+                            </a>
+                        `;
+                        listaDocs.appendChild(li);
+                    });
+                }
+
+                // Historial (si tu DTO trae HistorialEstados)
+                const listaHist = document.getElementById('listaHistorial');
+                listaHist.innerHTML = '';
+                const historial = s.historialEstados ?? s.HistorialEstados ?? [];
+
+                if (historial.length === 0) {
+                    listaHist.innerHTML = '<li class="list-group-item">No hay historial disponible.</li>';
+                } else {
+                    historial.forEach(h => {
+                        const estadoHist = h.estado ?? h.Estado ?? '—';
+                        const fechaHistRaw = h.fecha ?? h.Fecha ?? '';
+                        const fechaHist = fechaHistRaw ? fechaHistRaw.toString().substring(0, 19).replace('T', ' ') : '—';
+                        const comentario = h.comentario ?? h.Comentario ?? '';
+
+                        const li = document.createElement('li');
+                        li.className = 'list-group-item';
+                        li.innerHTML = `
+                            <div><strong>${estadoHist}</strong> <small class="text-muted">(${fechaHist})</small></div>
+                            ${comentario ? `<div>${comentario}</div>` : ''}
+                        `;
+                        listaHist.appendChild(li);
+                    });
+                }
+
+                contenido.classList.remove('d-none');
+
+            } catch (err) {
+                console.error(err);
+                loading.classList.add('d-none');
+                alerta.textContent = 'Error de conexión con el servidor.';
+                alerta.classList.remove('d-none');
+            }
+        }
+    </script>
+}

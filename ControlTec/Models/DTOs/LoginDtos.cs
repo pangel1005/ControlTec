@@ -3,7 +3,7 @@
     public class LoginRequestDto
     {
         public string Correo { get; set; } = null!;
-        public string Contrasena { get; set; } = null!; // sin tilde para evitar líos en JSON
+        public string Password { get; set; } = null!; // sin tilde para evitar líos en JSON
     }
 
     public class LoginResponseDto

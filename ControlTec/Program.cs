@@ -25,14 +25,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+builder.Services.AddAuthorization();
+
 // 2. DB CONTEXT (SQL SERVER)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
-// 3. CONTROLADORES + JSON
+// 3. CONTROLADORES + VISTAS + JSON
 builder.Services
-    .AddControllers()
+    .AddControllersWithViews()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
@@ -45,7 +47,6 @@ builder.Services.AddCors(options =>
     options.AddPolicy("FrontendPolicy", policy =>
     {
         policy
-            // Cambia estos origins por la URL de tu frontend
             .WithOrigins("https://localhost:5173", "http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod();
@@ -93,12 +94,21 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-// CORS antes de auth
+app.UseRouting();
+
+// CORS después de UseRouting
 app.UseCors("FrontendPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+// ?? RUTA CONVENCIONAL PARA MVC (frontend)
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Home}/{action=Index}/{id?}"
+);
+
+// ?? RUTAS DE API (atribute routing)
 app.MapControllers();
 
 app.Run();
