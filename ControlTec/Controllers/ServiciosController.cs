@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ControlTec.Data;
 using ControlTec.Models;
@@ -18,10 +19,11 @@ namespace ControlTec.Controllers
         }
 
         // ==============================
-        // GET: api/Servicios
-        // ?soloActivos=true (opcional)
+        // GET: api/Servicios?soloActivos=true
+        // (listado general – público)
         // ==============================
         [HttpGet]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<object>>> GetServicios([FromQuery] bool? soloActivos)
         {
             var query = _context.Servicios
@@ -43,9 +45,33 @@ namespace ControlTec.Controllers
                     s.Costo,
                     s.RequierePago,
                     s.Activo,
-                    DocumentosRequeridos = s.DocumentosRequeridos
+                    DocumentosRequeridos = s.DocumentosRequeridos!
                         .Select(dr => new { dr.Id, dr.Nombre })
                         .ToList()
+                })
+                .ToListAsync();
+
+            return Ok(lista);
+        }
+
+        // ==============================
+        // GET: api/Servicios/publicos
+        // (solo activos, pensado para el portal)
+        // ==============================
+        [HttpGet("publicos")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<object>>> GetServiciosPublicos()
+        {
+            var lista = await _context.Servicios
+                .Where(s => s.Activo)
+                .OrderBy(s => s.Nombre)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Nombre,
+                    s.Descripcion,
+                    s.Costo,
+                    s.RequierePago
                 })
                 .ToListAsync();
 
@@ -56,6 +82,7 @@ namespace ControlTec.Controllers
         // GET: api/Servicios/{id}
         // ==============================
         [HttpGet("{id}")]
+        [AllowAnonymous]
         public async Task<ActionResult<object>> GetServicio(int id)
         {
             var servicio = await _context.Servicios
@@ -73,7 +100,7 @@ namespace ControlTec.Controllers
                 servicio.Costo,
                 servicio.RequierePago,
                 servicio.Activo,
-                DocumentosRequeridos = servicio.DocumentosRequeridos
+                DocumentosRequeridos = servicio.DocumentosRequeridos!
                     .Select(dr => new { dr.Id, dr.Nombre })
                     .ToList()
             };
@@ -83,9 +110,10 @@ namespace ControlTec.Controllers
 
         // ==============================
         // POST: api/Servicios
-        // Crear servicio + (opcional) docs requeridos
+        // Crear servicio + documentos requeridos
         // ==============================
         [HttpPost]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<object>> PostServicio([FromBody] CrearServicioDto dto)
         {
             var servicio = new Servicio
@@ -98,7 +126,7 @@ namespace ControlTec.Controllers
                 DocumentosRequeridos = new List<DocumentoRequerido>()
             };
 
-            // Si vienen documentos requeridos, los agregamos
+            // Documentos requeridos iniciales
             if (dto.DocumentosRequeridos != null)
             {
                 foreach (var nombreDoc in dto.DocumentosRequeridos)
@@ -129,9 +157,9 @@ namespace ControlTec.Controllers
 
         // ==============================
         // PUT: api/Servicios/{id}
-        // Actualizar datos básicos (no docs requeridos)
         // ==============================
         [HttpPut("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutServicio(int id, [FromBody] ActualizarServicioDto dto)
         {
             var servicio = await _context.Servicios.FindAsync(id);
@@ -149,10 +177,10 @@ namespace ControlTec.Controllers
         }
 
         // ==============================
-        // DELETE (LÓGICO): api/Servicios/{id}
-        // Marca Activo = false
+        // DELETE lógico: api/Servicios/{id}
         // ==============================
         [HttpDelete("{id}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DesactivarServicio(int id)
         {
             var servicio = await _context.Servicios.FindAsync(id);
@@ -170,9 +198,9 @@ namespace ControlTec.Controllers
 
         // ==============================
         // POST: api/Servicios/{id}/activar
-        // Re-activar un servicio
         // ==============================
         [HttpPost("{id}/activar")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ActivarServicio(int id)
         {
             var servicio = await _context.Servicios.FindAsync(id);
@@ -192,6 +220,7 @@ namespace ControlTec.Controllers
         // GET: api/Servicios/{id}/documentos-requeridos
         // ==============================
         [HttpGet("{id}/documentos-requeridos")]
+        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<object>>> GetDocumentosRequeridos(int id)
         {
             var servicio = await _context.Servicios
@@ -201,7 +230,7 @@ namespace ControlTec.Controllers
             if (servicio == null)
                 return NotFound("Servicio no encontrado.");
 
-            var docs = servicio.DocumentosRequeridos
+            var docs = servicio.DocumentosRequeridos!
                 .Select(dr => new
                 {
                     dr.Id,
@@ -214,10 +243,12 @@ namespace ControlTec.Controllers
 
         // ==============================
         // POST: api/Servicios/{id}/documentos-requeridos
-        // Agregar un documento requerido
         // ==============================
         [HttpPost("{id}/documentos-requeridos")]
-        public async Task<ActionResult<object>> AgregarDocumentoRequerido(int id, [FromBody] CrearDocumentoRequeridoDto dto)
+        [Authorize(Roles = "Admin")]
+        public async Task<ActionResult<object>> AgregarDocumentoRequerido(
+            int id,
+            [FromBody] CrearDocumentoRequeridoDto dto)
         {
             var servicio = await _context.Servicios
                 .Include(s => s.DocumentosRequeridos)
@@ -250,6 +281,7 @@ namespace ControlTec.Controllers
         // DELETE: api/Servicios/{id}/documentos-requeridos/{docId}
         // ==============================
         [HttpDelete("{id}/documentos-requeridos/{docId}")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> EliminarDocumentoRequerido(int id, int docId)
         {
             var doc = await _context.DocumentosRequeridos

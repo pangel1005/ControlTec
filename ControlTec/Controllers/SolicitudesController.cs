@@ -519,6 +519,7 @@ namespace ControlTec.Controllers
 
         // ======================================
         // 9. ENVIAR / DEPOSITAR SOLICITUD
+        //     (DocumentosRequeridos solo informativos)
         // ======================================
         [HttpPost("{id}/enviar")]
         [Authorize(Roles = "Usuario,Admin")]
@@ -537,6 +538,7 @@ namespace ControlTec.Controllers
             if (!User.IsInRole("Admin") && solicitud.UsuarioId != currentUserId)
                 return Forbid();
 
+            // Solo permitimos enviar si está en Pendiente o Borrador
             if (!string.Equals(solicitud.Estado, "Pendiente", StringComparison.OrdinalIgnoreCase)
                 && !string.Equals(solicitud.Estado, "Borrador", StringComparison.OrdinalIgnoreCase))
             {
@@ -547,30 +549,27 @@ namespace ControlTec.Controllers
             if (usuario == null)
                 return BadRequest("El usuario que envía la solicitud no existe.");
 
-            var requeridos = solicitud.Servicio?.DocumentosRequeridos?.ToList()
-                             ?? new List<DocumentoRequerido>();
+            // =============================
+            // DocumentosRequeridos SOLO como referencia
+            // =============================
+            List<string>? documentosFaltantes = null;
 
-            var cargados = solicitud.DocumentosCargados?.ToList()
-                           ?? new List<Documento>();
-
-            var nombresCargados = new HashSet<string>(
-                cargados.Select(d => d.Nombre.Trim().ToLower())
-            );
-
-            var faltantes = requeridos
-                .Where(dr => !nombresCargados.Contains(dr.Nombre.Trim().ToLower()))
-                .Select(dr => dr.Nombre)
-                .ToList();
-
-            if (faltantes.Any())
+            if (solicitud.Servicio?.DocumentosRequeridos != null)
             {
-                return BadRequest(new
-                {
-                    mensaje = "No se puede enviar la solicitud. Faltan documentos obligatorios.",
-                    documentosFaltantes = faltantes
-                });
+                var requeridos = solicitud.Servicio.DocumentosRequeridos
+                    .Select(dr => dr.Nombre.Trim().ToLower())
+                    .ToList();
+
+                var cargados = (solicitud.DocumentosCargados ?? new List<Documento>())
+                    .Select(d => d.Nombre.Trim().ToLower())
+                    .ToList();
+
+                documentosFaltantes = requeridos
+                    .Except(cargados)
+                    .ToList();
             }
 
+            // Cambiar estado a Depositada y registrar historial
             var estadoAnterior = solicitud.Estado;
             solicitud.Estado = "Depositada";
 
@@ -589,6 +588,15 @@ namespace ControlTec.Controllers
             _context.HistorialEstados.Add(nuevoHistorial);
             await _context.SaveChangesAsync();
 
+            var cargadosFinal = (solicitud.DocumentosCargados ?? new List<Documento>())
+                .Select(d => new
+                {
+                    d.Id,
+                    d.Nombre,
+                    d.Tipo,
+                    d.Ruta
+                });
+
             var resultado = new
             {
                 solicitud.Id,
@@ -606,13 +614,9 @@ namespace ControlTec.Controllers
                     solicitud.Servicio.Id,
                     solicitud.Servicio.Nombre
                 },
-                DocumentosCargados = cargados.Select(d => new
-                {
-                    d.Id,
-                    d.Nombre,
-                    d.Tipo,
-                    d.Ruta
-                }),
+                DocumentosCargados = cargadosFinal,
+                // solo informativo para ventanilla / frontend
+                DocumentosFaltantes = documentosFaltantes,
                 Movimiento = new
                 {
                     nuevoHistorial.Id,
