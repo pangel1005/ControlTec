@@ -1,9 +1,14 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
 using ControlTec.Data;
 using ControlTec.Models;
 using ControlTec.Models.DTOs;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace ControlTec.Controllers
 {
@@ -12,18 +17,19 @@ namespace ControlTec.Controllers
     public class ServiciosController : ControllerBase
     {
         private readonly AppDbContext _context;
+        private readonly IWebHostEnvironment _env;
 
-        public ServiciosController(AppDbContext context)
+        public ServiciosController(AppDbContext context, IWebHostEnvironment env)
         {
             _context = context;
+            _env = env;
         }
 
         // ==============================
         // GET: api/Servicios?soloActivos=true
-        // (listado general – público)
+        // Lista de servicios (catálogo)
         // ==============================
         [HttpGet]
-        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<object>>> GetServicios([FromQuery] bool? soloActivos)
         {
             var query = _context.Servicios
@@ -45,6 +51,7 @@ namespace ControlTec.Controllers
                     s.Costo,
                     s.RequierePago,
                     s.Activo,
+                    s.RutaFormularioBase,
                     DocumentosRequeridos = s.DocumentosRequeridos!
                         .Select(dr => new { dr.Id, dr.Nombre })
                         .ToList()
@@ -55,34 +62,10 @@ namespace ControlTec.Controllers
         }
 
         // ==============================
-        // GET: api/Servicios/publicos
-        // (solo activos, pensado para el portal)
-        // ==============================
-        [HttpGet("publicos")]
-        [AllowAnonymous]
-        public async Task<ActionResult<IEnumerable<object>>> GetServiciosPublicos()
-        {
-            var lista = await _context.Servicios
-                .Where(s => s.Activo)
-                .OrderBy(s => s.Nombre)
-                .Select(s => new
-                {
-                    s.Id,
-                    s.Nombre,
-                    s.Descripcion,
-                    s.Costo,
-                    s.RequierePago
-                })
-                .ToListAsync();
-
-            return Ok(lista);
-        }
-
-        // ==============================
         // GET: api/Servicios/{id}
+        // Detalle de un servicio
         // ==============================
         [HttpGet("{id}")]
-        [AllowAnonymous]
         public async Task<ActionResult<object>> GetServicio(int id)
         {
             var servicio = await _context.Servicios
@@ -100,6 +83,7 @@ namespace ControlTec.Controllers
                 servicio.Costo,
                 servicio.RequierePago,
                 servicio.Activo,
+                servicio.RutaFormularioBase,
                 DocumentosRequeridos = servicio.DocumentosRequeridos!
                     .Select(dr => new { dr.Id, dr.Nombre })
                     .ToList()
@@ -109,11 +93,36 @@ namespace ControlTec.Controllers
         }
 
         // ==============================
+        // GET: api/Servicios/{id}/formulario
+        // Devuelve el PDF oficial en blanco del servicio
+        // ==============================
+        [HttpGet("{id}/formulario")]
+        public async Task<IActionResult> DescargarFormularioBase(int id)
+        {
+            var servicio = await _context.Servicios.FindAsync(id);
+
+            if (servicio == null)
+                return NotFound("Servicio no encontrado.");
+
+            if (string.IsNullOrWhiteSpace(servicio.RutaFormularioBase))
+                return NotFound("Este servicio no tiene formulario base configurado.");
+
+            var relativePath = servicio.RutaFormularioBase.TrimStart('/', '\\');
+            var root = _env.WebRootPath ?? Directory.GetCurrentDirectory();
+            var fullPath = Path.Combine(root, relativePath);
+
+            if (!System.IO.File.Exists(fullPath))
+                return NotFound("El archivo de formulario no se encuentra en el servidor.");
+
+            var fileName = Path.GetFileName(fullPath);
+            return PhysicalFile(fullPath, "application/pdf", fileName);
+        }
+
+        // ==============================
         // POST: api/Servicios
-        // Crear servicio + documentos requeridos
+        // Crear servicio + docs requeridos
         // ==============================
         [HttpPost]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<object>> PostServicio([FromBody] CrearServicioDto dto)
         {
             var servicio = new Servicio
@@ -123,10 +132,10 @@ namespace ControlTec.Controllers
                 Costo = dto.Costo,
                 RequierePago = dto.RequierePago,
                 Activo = dto.Activo,
+                RutaFormularioBase = dto.RutaFormularioBase,
                 DocumentosRequeridos = new List<DocumentoRequerido>()
             };
 
-            // Documentos requeridos iniciales
             if (dto.DocumentosRequeridos != null)
             {
                 foreach (var nombreDoc in dto.DocumentosRequeridos)
@@ -151,15 +160,16 @@ namespace ControlTec.Controllers
                 servicio.Descripcion,
                 servicio.Costo,
                 servicio.RequierePago,
-                servicio.Activo
+                servicio.Activo,
+                servicio.RutaFormularioBase
             });
         }
 
         // ==============================
         // PUT: api/Servicios/{id}
+        // Actualizar datos básicos
         // ==============================
         [HttpPut("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> PutServicio(int id, [FromBody] ActualizarServicioDto dto)
         {
             var servicio = await _context.Servicios.FindAsync(id);
@@ -171,6 +181,7 @@ namespace ControlTec.Controllers
             servicio.Costo = dto.Costo;
             servicio.RequierePago = dto.RequierePago;
             servicio.Activo = dto.Activo;
+            servicio.RutaFormularioBase = dto.RutaFormularioBase;
 
             await _context.SaveChangesAsync();
             return NoContent();
@@ -180,7 +191,6 @@ namespace ControlTec.Controllers
         // DELETE lógico: api/Servicios/{id}
         // ==============================
         [HttpDelete("{id}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> DesactivarServicio(int id)
         {
             var servicio = await _context.Servicios.FindAsync(id);
@@ -200,7 +210,6 @@ namespace ControlTec.Controllers
         // POST: api/Servicios/{id}/activar
         // ==============================
         [HttpPost("{id}/activar")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> ActivarServicio(int id)
         {
             var servicio = await _context.Servicios.FindAsync(id);
@@ -220,7 +229,6 @@ namespace ControlTec.Controllers
         // GET: api/Servicios/{id}/documentos-requeridos
         // ==============================
         [HttpGet("{id}/documentos-requeridos")]
-        [AllowAnonymous]
         public async Task<ActionResult<IEnumerable<object>>> GetDocumentosRequeridos(int id)
         {
             var servicio = await _context.Servicios
@@ -231,11 +239,7 @@ namespace ControlTec.Controllers
                 return NotFound("Servicio no encontrado.");
 
             var docs = servicio.DocumentosRequeridos!
-                .Select(dr => new
-                {
-                    dr.Id,
-                    dr.Nombre
-                })
+                .Select(dr => new { dr.Id, dr.Nombre })
                 .ToList();
 
             return Ok(docs);
@@ -245,7 +249,6 @@ namespace ControlTec.Controllers
         // POST: api/Servicios/{id}/documentos-requeridos
         // ==============================
         [HttpPost("{id}/documentos-requeridos")]
-        [Authorize(Roles = "Admin")]
         public async Task<ActionResult<object>> AgregarDocumentoRequerido(
             int id,
             [FromBody] CrearDocumentoRequeridoDto dto)
@@ -281,7 +284,6 @@ namespace ControlTec.Controllers
         // DELETE: api/Servicios/{id}/documentos-requeridos/{docId}
         // ==============================
         [HttpDelete("{id}/documentos-requeridos/{docId}")]
-        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> EliminarDocumentoRequerido(int id, int docId)
         {
             var doc = await _context.DocumentosRequeridos
