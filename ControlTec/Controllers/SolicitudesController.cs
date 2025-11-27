@@ -418,7 +418,7 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 7. CAMBIAR ESTADO (roles internos)
+        // 7. CAMBIAR ESTADO (roles internos + rechazados)
         // ======================================
         [HttpPost("{id}/cambiar-estado")]
         [Authorize(Roles = "Admin,EncargadoUPC,TecnicoUPC,Analista,DNCD,VUS,Direccion")]
@@ -444,6 +444,7 @@ namespace ControlTec.Controllers
 
             var rolUsuario = usuario.Roll?.Trim() ?? string.Empty;
 
+            // Catálogo de transiciones permitidas por rol
             var transiciones = new List<TransicionRol>
             {
                 // Encargado UPC
@@ -453,6 +454,13 @@ namespace ControlTec.Controllers
                     Desde = EstadosSolicitud.Depositada,
                     Hacia = EstadosSolicitud.ValidacionRecepcion
                 },
+                // Encargado UPC puede RECHAZAR en recepción
+                new TransicionRol
+                {
+                    Rol   = "EncargadoUPC",
+                    Desde = EstadosSolicitud.Depositada,
+                    Hacia = EstadosSolicitud.Rechazada
+                },
 
                 // Técnico UPC
                 new TransicionRol
@@ -460,6 +468,13 @@ namespace ControlTec.Controllers
                     Rol   = "TecnicoUPC",
                     Desde = EstadosSolicitud.ValidacionRecepcion,
                     Hacia = EstadosSolicitud.EvaluacionTecnica
+                },
+                // Técnico UPC puede RECHAZAR en evaluación básica
+                new TransicionRol
+                {
+                    Rol   = "TecnicoUPC",
+                    Desde = EstadosSolicitud.ValidacionRecepcion,
+                    Hacia = EstadosSolicitud.Rechazada
                 },
 
                 // Analista (DIGEAMPS)
@@ -469,6 +484,12 @@ namespace ControlTec.Controllers
                     Desde = EstadosSolicitud.EvaluacionTecnica,
                     Hacia = EstadosSolicitud.AprobacionDIGEAMPS
                 },
+                new TransicionRol
+                {
+                    Rol   = "Analista",
+                    Desde = EstadosSolicitud.EvaluacionTecnica,
+                    Hacia = EstadosSolicitud.Rechazada
+                },
 
                 // DNCD
                 new TransicionRol
@@ -477,6 +498,12 @@ namespace ControlTec.Controllers
                     Desde = EstadosSolicitud.AprobacionDIGEAMPS,
                     Hacia = EstadosSolicitud.AprobacionDNCD
                 },
+                new TransicionRol
+                {
+                    Rol   = "DNCD",
+                    Desde = EstadosSolicitud.AprobacionDIGEAMPS,
+                    Hacia = EstadosSolicitud.Rechazada
+                },
 
                 // VUS
                 new TransicionRol
@@ -484,6 +511,12 @@ namespace ControlTec.Controllers
                     Rol   = "VUS",
                     Desde = EstadosSolicitud.AprobacionDNCD,
                     Hacia = EstadosSolicitud.RevisionVUS
+                },
+                new TransicionRol
+                {
+                    Rol   = "VUS",
+                    Desde = EstadosSolicitud.AprobacionDNCD,
+                    Hacia = EstadosSolicitud.Rechazada
                 },
 
                 // Dirección
@@ -500,7 +533,7 @@ namespace ControlTec.Controllers
                     Hacia = EstadosSolicitud.Rechazada
                 },
 
-                // Admin (igual que Dirección)
+                // Admin: puede aprobar o rechazar desde revisión VUS
                 new TransicionRol
                 {
                     Rol   = "Admin",
@@ -513,8 +546,7 @@ namespace ControlTec.Controllers
                     Desde = EstadosSolicitud.RevisionVUS,
                     Hacia = EstadosSolicitud.Rechazada
                 },
-
-                // Entregada (solo Admin)
+                // Admin: marcar como entregada
                 new TransicionRol
                 {
                     Rol   = "Admin",
@@ -528,7 +560,7 @@ namespace ControlTec.Controllers
 
             if (esAdmin)
             {
-                // Admin puede hacer cualquier transición definida en el catálogo
+                // Admin puede usar cualquiera de las transiciones definidas
                 transicionPermitida = transiciones.Any(t =>
                     string.Equals(t.Hacia, estadoNuevo, StringComparison.OrdinalIgnoreCase));
             }
@@ -551,12 +583,20 @@ namespace ControlTec.Controllers
 
             solicitud.Estado = estadoNuevo;
 
+            // Si es un rechazo y no mandaron comentario, ponemos uno por defecto
+            var comentario = dto.Comentario;
+            if (string.Equals(estadoNuevo, EstadosSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase) &&
+                string.IsNullOrWhiteSpace(comentario))
+            {
+                comentario = $"Solicitud rechazada por el rol {rolUsuario}.";
+            }
+
             var nuevoHistorial = new HistorialEstado
             {
                 SolicitudId = solicitud.Id,
                 EstadoAnterior = estadoAnterior,
                 EstadoNuevo = estadoNuevo,
-                Comentario = dto.Comentario,
+                Comentario = comentario,
                 UsuarioId = userId,
                 FechaCambio = DateTime.Now
             };
@@ -668,18 +708,19 @@ namespace ControlTec.Controllers
             var cargados = solicitud.DocumentosCargados?.ToList()
                            ?? new List<Documento>();
 
-            // Cambio de estado directo a Depositada (sin validar documentos faltantes)
             var estadoAnterior = solicitud.Estado;
             solicitud.Estado = EstadosSolicitud.Depositada;
+
+            var comentario = string.IsNullOrWhiteSpace(dto.Comentario)
+                ? "Solicitud enviada por el usuario."
+                : dto.Comentario;
 
             var nuevoHistorial = new HistorialEstado
             {
                 SolicitudId = solicitud.Id,
                 EstadoAnterior = estadoAnterior,
                 EstadoNuevo = solicitud.Estado,
-                Comentario = string.IsNullOrWhiteSpace(dto.Comentario)
-                    ? "Solicitud enviada por el usuario."
-                    : dto.Comentario,
+                Comentario = comentario,
                 UsuarioId = currentUserId,
                 FechaCambio = DateTime.Now
             };
