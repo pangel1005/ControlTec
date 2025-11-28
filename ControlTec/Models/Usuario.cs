@@ -1,17 +1,30 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
-namespace ControlTec.Models
+public class Usuario
 {
-    public class Usuario
-    {
-        public int Id { get; set; }
-        public string Nombre { get; set; } = null!;
-        public string Correo { get; set; } = null!;
+    public int Id { get; set; }
 
-        // 👇 No se enviará en las respuestas JSON ni en Swagger
-        [JsonIgnore]
-        public string Contraseña { get; set; } = null!;
+    [Required]
+    public string Nombre { get; set; } = null!;
 
-        public string Roll { get; set; } = null!;  // Ejemplo: admin, usuario
-    }
+    [Required]
+    [EmailAddress]
+    public string Correo { get; set; } = null!;
+
+    [Required]
+    [JsonIgnore]
+    public string Contraseña { get; set; } = null!;
+
+    [Required]
+    public string Roll { get; set; } = null!;
+
+    public bool Activo { get; set; } = true;
+
+    public bool EsInternoPendiente { get; set; } = false;
+
+    // 🔹 Nueva propiedad
+    [Required]
+    [StringLength(11, MinimumLength = 11)]
+    public string Cedula { get; set; } = null!;
 }
