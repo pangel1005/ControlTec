@@ -1,35 +1,59 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+// src/App.jsx
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import Navbar from "./components/Navbar";
+import Login from "./pages/Login";
+import Dashboard from "./pages/Dashboard";
+import MisSolicitudes from "./pages/solicitudes/MisSolicitudes";
+import { AuthProvider } from "./context/AuthContext";
+import ProtectedRoute from "./components/ProtectedRoute";
+import "./styles/layout.css";
 
-function App() {
-  const [count, setCount] = useState(0)
+function AppInner() {
+  const location = useLocation();
+  const isLoginRoute = location.pathname === "/login";
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      {/* ✅ No mostrar navbar en /login */}
+      {!isLoginRoute && <Navbar />}
+
+      {/* ✅ En /login NO usamos page-container para que el login ocupe toda la pantalla */}
+      <div className={isLoginRoute ? "" : "page-container"}>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/mis-solicitudes"
+            element={
+              <ProtectedRoute>
+                <MisSolicitudes />
+              </ProtectedRoute>
+            }
+          />
+
+          {/* Ajusta esto si tu ruta por defecto es otra */}
+          <Route path="*" element={<Navigate to="/login" />} />
+        </Routes>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
-  )
+  );
 }
 
-export default App
+export default function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <AppInner />
+      </Router>
+    </AuthProvider>
+  );
+}
