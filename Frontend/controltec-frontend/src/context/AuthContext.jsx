@@ -19,20 +19,23 @@ export function AuthProvider({ children }) {
     setLoading(false);
   }, []);
 
-  const login = async (correo, password) => {
-    const res = await api.post("/api/Auth/login", {
-      correo,
-      password,
-    });
+const login = async (correo, password) => {
+  const res = await api.post("/api/Auth/login", {
+    correo,
+    password,
+  });
 
-    const data = res.data; // { token, usuario }
+  const data = res.data; // { token, usuario }
 
-    setToken(data.token);
-    setUsuario(data.usuario);
+  setToken(data.token);
+  setUsuario(data.usuario);
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("usuario", JSON.stringify(data.usuario));
-  };
+  localStorage.setItem("token", data.token);
+  localStorage.setItem("usuario", JSON.stringify(data.usuario));
+
+  return data.usuario;          // 👈 DEVOLVEMOS EL USUARIO
+};
+
 
   const logout = () => {
     setToken(null);

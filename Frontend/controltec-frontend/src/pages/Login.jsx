@@ -6,27 +6,36 @@ import { useAuth } from "../context/AuthContext";
 export default function Login() {
   const [correo, setCorreo] = useState("");
   const [password, setPassword] = useState("");
+  const [mostrarPassword, setMostrarPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  setError("");
+  setLoading(true);
 
-    try {
-      await login(correo, password); // 👉 aquí sigue usando tu API/AuthContext
-      navigate("/dashboard");
-    } catch (err) {
-      console.error(err);
-      setError("Correo o contraseña incorrectos o error en el servidor.");
-    } finally {
-      setLoading(false);
+  try {
+    const user = await login(correo, password);  // 👈 ahora obtenemos el usuario
+
+    const rol = user?.roll ?? user?.Roll;        // por si viene con R mayúscula
+
+    if (rol === "Solicitante") {
+      navigate("/mis-solicitudes");             // 👉 solicitante va a Mis solicitudes
+    } else {
+      navigate("/dashboard");                   // 👉 otros roles al dashboard
     }
-  };
+  } catch (err) {
+    console.error(err);
+    setError("Correo o contraseña incorrectos o error en el servidor.");
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   return (
     <div className="login-page">
@@ -34,10 +43,13 @@ export default function Login() {
         {/* Header */}
         <div className="login-header">
           <h1>Bienvenido</h1>
-          <p>Inicia sesión en tu cuenta de ControlTec.</p>
+          <p>Inicia sesión en tu cuenta</p>
         </div>
 
-        {/* Form */}
+        {/* Mensaje de error */}
+        {error && <div className="login-error-banner">{error}</div>}
+
+        {/* Formulario */}
         <form onSubmit={handleSubmit} className="login-form">
           {/* Correo */}
           <div className="form-group">
@@ -56,7 +68,6 @@ export default function Login() {
           <div className="form-group">
             <div className="form-label-row">
               <label htmlFor="password">Contraseña</label>
-              {/* Esto es solo visual por ahora */}
               <button
                 type="button"
                 className="link-button"
@@ -67,20 +78,26 @@ export default function Login() {
                 ¿Olvidaste tu contraseña?
               </button>
             </div>
-            <input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+
+            <div className="password-input-wrapper">
+              <input
+                id="password"
+                type={mostrarPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                onClick={() => setMostrarPassword((v) => !v)}
+              >
+                {mostrarPassword ? "Ocultar" : "Ver"}
+              </button>
+            </div>
           </div>
 
-          {/* Error */}
-          {error && <p className="login-error">{error}</p>}
-
-          {/* Botón */}
           <button
             type="submit"
             disabled={loading}
@@ -89,6 +106,12 @@ export default function Login() {
             {loading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
         </form>
+
+        {/* Texto inferior (sin Google / GitHub) */}
+        <p className="login-register-text">
+          ¿No tienes cuenta?{" "}
+          <span>Contacta al administrador de ControlTec.</span>
+        </p>
       </div>
     </div>
   );

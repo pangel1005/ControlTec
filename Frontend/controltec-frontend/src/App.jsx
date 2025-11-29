@@ -7,6 +7,9 @@ import MisSolicitudes from "./pages/solicitudes/MisSolicitudes";
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
 import "./styles/layout.css";
+import NuevaSolicitud from "./pages/solicitudes/NuevaSolicitud.jsx";
+import SolicitudDetalle from "./pages/solicitudes/SolicitudDetalle.jsx";
+
 
 function AppInner() {
   const location = useLocation();
@@ -22,6 +25,7 @@ function AppInner() {
         <Routes>
           <Route path="/login" element={<Login />} />
 
+
           <Route
             path="/dashboard"
             element={
@@ -31,6 +35,17 @@ function AppInner() {
             }
           />
 
+                  <Route
+          path="/solicitudes/:id"
+          element={
+            <ProtectedRoute>
+              <SolicitudDetalle />
+            </ProtectedRoute>
+          }
+        />
+
+            
+
           <Route
             path="/mis-solicitudes"
             element={
@@ -39,6 +54,15 @@ function AppInner() {
               </ProtectedRoute>
             }
           />
+              <Route
+                path="/solicitudes/nueva"
+                element={
+                  <ProtectedRoute>
+                    <NuevaSolicitud />
+                  </ProtectedRoute>
+            }
+          />
+
 
           {/* Ajusta esto si tu ruta por defecto es otra */}
           <Route path="*" element={<Navigate to="/login" />} />
