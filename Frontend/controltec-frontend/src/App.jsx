@@ -9,6 +9,13 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import "./styles/layout.css";
 import NuevaSolicitud from "./pages/solicitudes/NuevaSolicitud.jsx";
 import SolicitudDetalle from "./pages/solicitudes/SolicitudDetalle.jsx";
+import "./styles/global.css";
+import "./styles/layout.css";
+import "./styles/auth.css";
+import "./styles/solicitudes.css";
+
+
+
 
 
 function AppInner() {
