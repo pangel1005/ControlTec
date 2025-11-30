@@ -1,4 +1,4 @@
-﻿using ControlTec.Data;
+using ControlTec.Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -8,9 +8,8 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. AUTENTICACIÓN JWT
-builder.Services
-    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+// 1. AUTENTICACI�N JWT
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -18,18 +17,13 @@ builder.Services
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
-            ValidateIssuerSigningKey = true, // 🔐 importante
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SecretKey"]!)
-            ),
-            ClockSkew = TimeSpan.Zero // ⏱ sin margen extra
+            )
         };
     });
-
-// 1.1 AUTORIZACIÓN
-builder.Services.AddAuthorization();
 
 // 2. DB CONTEXT (SQL SERVER)
 builder.Services.AddDbContext<AppDbContext>(options =>
@@ -51,16 +45,10 @@ builder.Services.AddCors(options =>
     options.AddPolicy("FrontendPolicy", policy =>
     {
         policy
-            .WithOrigins(
-                "http://localhost:5173",
-                "https://localhost:5173"
-            // Si algún día usas CRA:
-            // "http://localhost:3000",
-            // "https://localhost:3000"
-            )
+            // Cambia estos origins por la URL de tu frontend
+            .WithOrigins("https://localhost:5173", "http://localhost:5173")
             .AllowAnyHeader()
             .AllowAnyMethod();
-        // .AllowCredentials(); // Solo si usas cookies; con JWT en header no es necesario
     });
 });
 
@@ -70,12 +58,10 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
         In = ParameterLocation.Header,
-        Description = "Introduce tu token JWT con el esquema **Bearer**. Ejemplo: `Bearer eyJhbGci...`"
+        Description = "Token JWT con prefijo **Bearer**. Ej: `Bearer eyJhbGci...`",
+        Name = "Authorization",
+        Type = SecuritySchemeType.ApiKey
     });
 
     c.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -105,7 +91,6 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// para servir PDFs, formularios, etc. desde wwwroot
 app.UseStaticFiles();
 
 // CORS antes de auth
