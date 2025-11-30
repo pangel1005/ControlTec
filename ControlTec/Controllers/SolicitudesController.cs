@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using ControlTec.Data;
 using ControlTec.Models;
 using ControlTec.Models.DTOs;
+using ControlTec.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -22,11 +23,16 @@ namespace ControlTec.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _env;
+        private readonly ICertificadoService _certificadoService;
 
-        public SolicitudesController(AppDbContext context, IWebHostEnvironment env)
+        public SolicitudesController(
+            AppDbContext context,
+            IWebHostEnvironment env,
+            ICertificadoService certificadoService)
         {
             _context = context;
             _env = env;
+            _certificadoService = certificadoService;
         }
 
         // ==============================
@@ -60,7 +66,8 @@ namespace ControlTec.Controllers
             public const string EvaluacionTecnica = "Evaluación Técnica";
             public const string AprobacionDIGEAMPS = "Aprobación DIGEAMPS";
             public const string AprobacionDNCD = "Aprobación DNCD";
-            public const string RevisionVUS = "Revisión VUS";
+            public const string EnRevisionVUS = "En Revisión VUS";
+            public const string Devuelta = "Devuelta";
             public const string Aprobada = "Aprobada";
             public const string Rechazada = "Rechazada";
             public const string Entregada = "Entregada";
@@ -68,7 +75,6 @@ namespace ControlTec.Controllers
 
         // ======================================
         // 0. INICIAR SOLICITUD (Solicitante / Usuario / Admin)
-        // Usa SP: sp_CrearSolicitud
         // ======================================
         [HttpPost("iniciar")]
         [Authorize(Roles = "Usuario,Solicitante,Admin")]
@@ -76,7 +82,6 @@ namespace ControlTec.Controllers
         {
             var userId = GetUserIdFromToken();
 
-            // Validar usuario y servicio igual que antes
             var usuario = await _context.Usuarios.FindAsync(userId);
             if (usuario == null)
                 return BadRequest("El usuario indicado no existe.");
@@ -88,26 +93,35 @@ namespace ControlTec.Controllers
             if (servicio == null)
                 return BadRequest("El servicio indicado no existe.");
 
-            // Usar SP para crear la solicitud + historial inicial
-            // SP: sp_CrearSolicitud @UsuarioId, @ServicioId, @Comentario
-            var solicitudCreada = await _context.Solicitudes
-                .FromSqlRaw(
-                    "EXEC sp_CrearSolicitud {0}, {1}, {2}",
-                    userId,
-                    dto.ServicioId,
-                    (object?)null // sin comentario inicial extra
-                )
-                .AsNoTracking()
-                .FirstOrDefaultAsync();
+            var solicitud = new Solicitud
+            {
+                UsuarioId = userId,
+                ServicioId = dto.ServicioId,
+                Estado = EstadosSolicitud.Pendiente,
+                FechaCreacion = DateTime.Now
+            };
 
-            if (solicitudCreada == null)
-                return StatusCode(500, "No se pudo crear la solicitud mediante el procedimiento almacenado.");
+            _context.Solicitudes.Add(solicitud);
+            await _context.SaveChangesAsync();
+
+            var historialInicial = new HistorialEstado
+            {
+                SolicitudId = solicitud.Id,
+                EstadoAnterior = null,
+                EstadoNuevo = EstadosSolicitud.Pendiente,
+                Comentario = "Solicitud iniciada desde el portal.",
+                UsuarioId = userId,
+                FechaCambio = DateTime.Now
+            };
+
+            _context.HistorialEstados.Add(historialInicial);
+            await _context.SaveChangesAsync();
 
             var resultado = new
             {
-                solicitudCreada.Id,
-                solicitudCreada.Estado,
-                solicitudCreada.FechaCreacion,
+                solicitud.Id,
+                solicitud.Estado,
+                solicitud.FechaCreacion,
                 Usuario = new
                 {
                     usuario.Id,
@@ -147,7 +161,6 @@ namespace ControlTec.Controllers
 
         // ======================================
         // 1.b) GET: SOLICITUDES POR USUARIO
-        // (aquí podemos seguir con LINQ; SP es opcional)
         // ======================================
         [HttpGet("usuario/{usuarioId}")]
         [Authorize(Roles = "Usuario,Solicitante,Admin")]
@@ -174,7 +187,8 @@ namespace ControlTec.Controllers
                     s.Servicio.Id,
                     s.Servicio.Nombre,
                     s.Servicio.Costo
-                }
+                },
+                s.RutaCertificado
             });
 
             return Ok(resultado);
@@ -182,7 +196,6 @@ namespace ControlTec.Controllers
 
         // ======================================
         // 2. POST genérico (solo Admin)
-        // (puede quedar con EF normal)
         // ======================================
         [HttpPost]
         [Authorize(Roles = "Admin")]
@@ -264,7 +277,7 @@ namespace ControlTec.Controllers
         // 5. DETALLE SOLICITUD (Solicitante/Admin)
         // ======================================
         [HttpGet("{id}/detalle")]
-        [Authorize(Roles = "Usuario,Solicitante,Admin")]
+        [Authorize(Roles = "Usuario,Solicitante,Admin, VUS, TecnicoUPC, EncargadoUPC, DNCD, Direccion")]
         public async Task<ActionResult<object>> GetDetalle(int id)
         {
             var solicitud = await _context.Solicitudes
@@ -278,8 +291,19 @@ namespace ControlTec.Controllers
                 return NotFound("Solicitud no encontrada.");
 
             var currentUserId = GetUserIdFromToken();
-            if (!User.IsInRole("Admin") && solicitud.UsuarioId != currentUserId)
+
+            // Solicitante solo puede ver sus solicitudes.
+            // Roles internos y Admin pueden ver todas.
+            if (!User.IsInRole("Admin")
+                && !User.IsInRole("VUS")
+                && !User.IsInRole("TecnicoUPC")
+                && !User.IsInRole("EncargadoUPC")
+                && !User.IsInRole("DNCD")
+                && !User.IsInRole("Direccion")
+                && solicitud.UsuarioId != currentUserId)
+            {
                 return Forbid();
+            }
 
             var documentos = (solicitud.DocumentosCargados ?? new List<Documento>())
                 .Select(d => new { d.Id, d.Nombre, d.Tipo, d.Ruta, d.SolicitudId })
@@ -290,6 +314,7 @@ namespace ControlTec.Controllers
                 solicitud.Id,
                 solicitud.Estado,
                 solicitud.FechaCreacion,
+                solicitud.RutaCertificado,   // 👈 string simple, nada raro
                 Usuario = solicitud.Usuario == null ? null : new
                 {
                     solicitud.Usuario.Id,
@@ -335,7 +360,6 @@ namespace ControlTec.Controllers
 
         // ======================================
         // 6. FILTRO (solo Admin)
-        // (se puede quedar con LINQ; SP es opcional)
         // ======================================
         [HttpGet("filtro")]
         [Authorize(Roles = "Admin")]
@@ -380,6 +404,7 @@ namespace ControlTec.Controllers
                     s.Id,
                     s.Estado,
                     s.FechaCreacion,
+                    s.RutaCertificado,
                     Usuario = s.Usuario == null ? null : new
                     {
                         s.Usuario.Id,
@@ -414,14 +439,14 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 7. CAMBIAR ESTADO (roles internos + rechazados)
-        // Usa SP: sp_CambiarEstado
+        // 7. CAMBIAR ESTADO (roles internos + Devuelta/Rechazada)
         // ======================================
         [HttpPost("{id}/cambiar-estado")]
-        [Authorize(Roles = "Admin,EncargadoUPC,TecnicoUPC,Analista,DNCD,VUS,Direccion")]
+        [Authorize(Roles = "Admin,VUS,TecnicoUPC,EncargadoUPC,DNCD,Direccion")]
         public async Task<ActionResult<object>> CambiarEstado(int id, CambiarEstadoSolicitudDto dto)
         {
             var solicitud = await _context.Solicitudes
+                .Include(s => s.HistorialEstados)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (solicitud == null)
@@ -443,110 +468,41 @@ namespace ControlTec.Controllers
             // Catálogo de transiciones permitidas por rol
             var transiciones = new List<TransicionRol>
             {
-                // Encargado UPC
-                new TransicionRol
-                {
-                    Rol   = "EncargadoUPC",
-                    Desde = EstadosSolicitud.Depositada,
-                    Hacia = EstadosSolicitud.ValidacionRecepcion
-                },
-                new TransicionRol
-                {
-                    Rol   = "EncargadoUPC",
-                    Desde = EstadosSolicitud.Depositada,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
+                // VUS: recepción inicial y re-toma de Devueltas
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.ValidacionRecepcion },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },   // devuelve al solicitante
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta,  Hacia = EstadosSolicitud.ValidacionRecepcion },
 
                 // Técnico UPC
-                new TransicionRol
-                {
-                    Rol   = "TecnicoUPC",
-                    Desde = EstadosSolicitud.ValidacionRecepcion,
-                    Hacia = EstadosSolicitud.EvaluacionTecnica
-                },
-                new TransicionRol
-                {
-                    Rol   = "TecnicoUPC",
-                    Desde = EstadosSolicitud.ValidacionRecepcion,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
+                new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.EvaluacionTecnica },
+                new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Rechazada },
 
-                // Analista (DIGEAMPS)
-                new TransicionRol
-                {
-                    Rol   = "Analista",
-                    Desde = EstadosSolicitud.EvaluacionTecnica,
-                    Hacia = EstadosSolicitud.AprobacionDIGEAMPS
-                },
-                new TransicionRol
-                {
-                    Rol   = "Analista",
-                    Desde = EstadosSolicitud.EvaluacionTecnica,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
+                // Encargado UPC (DIGEAMPS)
+                new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.AprobacionDIGEAMPS },
+                new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.Rechazada },
 
                 // DNCD
-                new TransicionRol
-                {
-                    Rol   = "DNCD",
-                    Desde = EstadosSolicitud.AprobacionDIGEAMPS,
-                    Hacia = EstadosSolicitud.AprobacionDNCD
-                },
-                new TransicionRol
-                {
-                    Rol   = "DNCD",
-                    Desde = EstadosSolicitud.AprobacionDIGEAMPS,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
+                new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.AprobacionDNCD },
+                new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Rechazada },
 
-                // VUS
-                new TransicionRol
-                {
-                    Rol   = "VUS",
-                    Desde = EstadosSolicitud.AprobacionDNCD,
-                    Hacia = EstadosSolicitud.RevisionVUS
-                },
-                new TransicionRol
-                {
-                    Rol   = "VUS",
-                    Desde = EstadosSolicitud.AprobacionDNCD,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
+                // VUS segunda vez (antes de dirección)
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.EnRevisionVUS },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
 
                 // Dirección
-                new TransicionRol
-                {
-                    Rol   = "Direccion",
-                    Desde = EstadosSolicitud.RevisionVUS,
-                    Hacia = EstadosSolicitud.Aprobada
-                },
-                new TransicionRol
-                {
-                    Rol   = "Direccion",
-                    Desde = EstadosSolicitud.RevisionVUS,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Aprobada },
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Rechazada },
 
-                // Admin: puede aprobar o rechazar desde revisión VUS
-                new TransicionRol
-                {
-                    Rol   = "Admin",
-                    Desde = EstadosSolicitud.RevisionVUS,
-                    Hacia = EstadosSolicitud.Aprobada
-                },
-                new TransicionRol
-                {
-                    Rol   = "Admin",
-                    Desde = EstadosSolicitud.RevisionVUS,
-                    Hacia = EstadosSolicitud.Rechazada
-                },
-                // Admin: marcar como entregada
-                new TransicionRol
-                {
-                    Rol   = "Admin",
-                    Desde = EstadosSolicitud.Aprobada,
-                    Hacia = EstadosSolicitud.Entregada
-                },
+                // Admin: igual que Dirección + Entregada
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Aprobada },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Rechazada },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.Aprobada, Hacia = EstadosSolicitud.Entregada },
             };
 
             bool esAdmin = string.Equals(rolUsuario, "Admin", StringComparison.OrdinalIgnoreCase);
@@ -575,40 +531,40 @@ namespace ControlTec.Controllers
                     $"El rol '{rolUsuario}' no puede cambiar la solicitud de '{estadoAnterior}' a '{estadoNuevo}'.");
             }
 
-            // Comentario final (si es rechazo y no mandaron comentario, le ponemos uno)
+            solicitud.Estado = estadoNuevo;
+
+            // Si es un rechazo o devolución y no mandaron comentario, ponemos uno por defecto
             var comentario = dto.Comentario;
-            if (string.Equals(estadoNuevo, EstadosSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase) &&
+            if ((string.Equals(estadoNuevo, EstadosSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(estadoNuevo, EstadosSolicitud.Devuelta, StringComparison.OrdinalIgnoreCase)) &&
                 string.IsNullOrWhiteSpace(comentario))
             {
-                comentario = $"Solicitud rechazada por el rol {rolUsuario}.";
+                comentario = $"Solicitud {estadoNuevo} por el rol {rolUsuario}.";
             }
 
-            // Usar SP para cambiar estado + historial
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC sp_CambiarEstado {0}, {1}, {2}, {3}",
-                id,
-                estadoNuevo,
-                comentario ?? string.Empty,
-                userId
-            );
+            var nuevoHistorial = new HistorialEstado
+            {
+                SolicitudId = solicitud.Id,
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = estadoNuevo,
+                Comentario = comentario,
+                UsuarioId = userId,
+                FechaCambio = DateTime.Now
+            };
 
-            // Recargar estado y último historial para armar la respuesta
-            var solicitudActualizada = await _context.Solicitudes.FindAsync(id);
-            var ultimoHistorial = await _context.HistorialEstados
-                .Where(h => h.SolicitudId == id)
-                .OrderByDescending(h => h.FechaCambio)
-                .FirstOrDefaultAsync();
+            _context.HistorialEstados.Add(nuevoHistorial);
+            await _context.SaveChangesAsync();
 
             var resultado = new
             {
-                solicitudActualizada?.Id,
+                solicitud.Id,
                 EstadoAnterior = estadoAnterior,
-                EstadoNuevo = solicitudActualizada?.Estado,
-                Historial = ultimoHistorial == null ? null : new
+                EstadoNuevo = estadoNuevo,
+                Historial = new
                 {
-                    ultimoHistorial.Id,
-                    ultimoHistorial.Comentario,
-                    ultimoHistorial.FechaCambio,
+                    nuevoHistorial.Id,
+                    nuevoHistorial.Comentario,
+                    nuevoHistorial.FechaCambio,
                     Usuario = new
                     {
                         usuario.Id,
@@ -624,7 +580,6 @@ namespace ControlTec.Controllers
 
         // ============================
         // 8. SUBIR DOCUMENTO A SOLICITUD
-        // Usa SP: sp_SubirDocumento para guardar en BD
         // ============================
         [HttpPost("{id}/documentos")]
         [Consumes("multipart/form-data")]
@@ -656,38 +611,22 @@ namespace ControlTec.Controllers
                 await archivo.CopyToAsync(stream);
             }
 
-            var rutaDb = $"/uploads/solicitudes/{id}/{safeFileName}";
-
-            // Usar SP para insertar el documento en la BD
-            var documentos = await _context.Documentos
-                .FromSqlRaw(
-                    "EXEC sp_SubirDocumento {0}, {1}, {2}, {3}",
-                    id,
-                    archivo.FileName,
-                    archivo.ContentType,
-                    rutaDb
-                )
-                .ToListAsync();
-
-            var documento = documentos.FirstOrDefault();
-            if (documento == null)
+            var documento = new Documento
             {
-                // fallback por si algo falla en el SP
-                documento = new Documento
-                {
-                    Nombre = archivo.FileName,
-                    Tipo = archivo.ContentType,
-                    Ruta = rutaDb,
-                    SolicitudId = id
-                };
-            }
+                Nombre = archivo.FileName,
+                Tipo = archivo.ContentType,
+                Ruta = $"/uploads/solicitudes/{id}/{safeFileName}",
+                SolicitudId = id
+            };
+
+            _context.Documentos.Add(documento);
+            await _context.SaveChangesAsync();
 
             return Ok(documento);
         }
 
         // ======================================
         // 9. ENVIAR / DEPOSITAR SOLICITUD
-        // Usa SP: sp_CambiarEstado para pasar a Depositada
         // ======================================
         [HttpPost("{id}/enviar")]
         [Authorize(Roles = "Usuario,Solicitante,Admin")]
@@ -696,6 +635,7 @@ namespace ControlTec.Controllers
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Servicio)
                 .Include(s => s.DocumentosCargados)
+                .Include(s => s.HistorialEstados)
                 .FirstOrDefaultAsync(s => s.Id == id);
 
             if (solicitud == null)
@@ -706,9 +646,10 @@ namespace ControlTec.Controllers
                 return Forbid();
 
             if (!string.Equals(solicitud.Estado, EstadosSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(solicitud.Estado, "Borrador", StringComparison.OrdinalIgnoreCase))
+                !string.Equals(solicitud.Estado, EstadosSolicitud.Devuelta, StringComparison.OrdinalIgnoreCase))
             {
-                return BadRequest($"La solicitud no está en un estado válido para ser enviada. Estado actual: '{solicitud.Estado}'.");
+                return BadRequest(
+                    $"La solicitud no está en un estado válido para ser enviada. Estado actual: '{solicitud.Estado}'.");
             }
 
             var usuario = await _context.Usuarios.FindAsync(currentUserId);
@@ -718,34 +659,31 @@ namespace ControlTec.Controllers
             var cargados = solicitud.DocumentosCargados?.ToList()
                            ?? new List<Documento>();
 
+            var estadoAnterior = solicitud.Estado;
+            solicitud.Estado = EstadosSolicitud.Depositada;
+
             var comentario = string.IsNullOrWhiteSpace(dto.Comentario)
                 ? "Solicitud enviada por el usuario."
                 : dto.Comentario;
 
-            // Usar SP para pasar a 'Depositada' y crear historial
-            await _context.Database.ExecuteSqlRawAsync(
-                "EXEC sp_CambiarEstado {0}, {1}, {2}, {3}",
-                id,
-                EstadosSolicitud.Depositada,
-                comentario,
-                currentUserId
-            );
+            var nuevoHistorial = new HistorialEstado
+            {
+                SolicitudId = solicitud.Id,
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = solicitud.Estado,
+                Comentario = comentario,
+                UsuarioId = currentUserId,
+                FechaCambio = DateTime.Now
+            };
 
-            // Recargar la solicitud e historial
-            var solicitudActualizada = await _context.Solicitudes
-                .Include(s => s.Servicio)
-                .FirstOrDefaultAsync(s => s.Id == id);
-
-            var ultimoHistorial = await _context.HistorialEstados
-                .Where(h => h.SolicitudId == id)
-                .OrderByDescending(h => h.FechaCambio)
-                .FirstOrDefaultAsync();
+            _context.HistorialEstados.Add(nuevoHistorial);
+            await _context.SaveChangesAsync();
 
             var resultado = new
             {
-                solicitudActualizada?.Id,
-                solicitudActualizada?.Estado,
-                solicitudActualizada?.FechaCreacion,
+                solicitud.Id,
+                solicitud.Estado,
+                solicitud.FechaCreacion,
                 Usuario = new
                 {
                     usuario.Id,
@@ -753,10 +691,10 @@ namespace ControlTec.Controllers
                     usuario.Correo,
                     usuario.Roll
                 },
-                Servicio = solicitudActualizada?.Servicio == null ? null : new
+                Servicio = solicitud.Servicio == null ? null : new
                 {
-                    solicitudActualizada.Servicio.Id,
-                    solicitudActualizada.Servicio.Nombre
+                    solicitud.Servicio.Id,
+                    solicitud.Servicio.Nombre
                 },
                 DocumentosCargados = cargados.Select(d => new
                 {
@@ -765,17 +703,45 @@ namespace ControlTec.Controllers
                     d.Tipo,
                     d.Ruta
                 }),
-                Movimiento = ultimoHistorial == null ? null : new
+                Movimiento = new
                 {
-                    ultimoHistorial.Id,
-                    EstadoAnterior = ultimoHistorial.EstadoAnterior,
-                    EstadoNuevo = ultimoHistorial.EstadoNuevo,
-                    ultimoHistorial.Comentario,
-                    ultimoHistorial.FechaCambio
+                    nuevoHistorial.Id,
+                    nuevoHistorial.EstadoAnterior,
+                    nuevoHistorial.EstadoNuevo,
+                    nuevoHistorial.Comentario,
+                    nuevoHistorial.FechaCambio
                 }
             };
 
             return Ok(resultado);
+        }
+
+        // ======================================
+        // 10. GENERAR CERTIFICADO (Dirección / Admin)
+        // ======================================
+        [HttpPost("{id}/certificado")]
+        [Authorize(Roles = "Direccion,Admin")]
+        public async Task<ActionResult<object>> GenerarCertificado(int id)
+        {
+            var solicitud = await _context.Solicitudes
+                .Include(s => s.Usuario)
+                .Include(s => s.Servicio)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (solicitud == null)
+                return NotFound("Solicitud no encontrada.");
+
+            if (!string.Equals(solicitud.Estado, EstadosSolicitud.Aprobada, StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Solo se puede generar certificado cuando la solicitud está Aprobada.");
+
+            var ruta = await _certificadoService.GenerarCertificadoAsync(id);
+
+            return Ok(new
+            {
+                solicitud.Id,
+                solicitud.Estado,
+                RutaCertificado = ruta
+            });
         }
     }
 }

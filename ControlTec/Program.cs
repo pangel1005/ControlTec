@@ -1,9 +1,11 @@
 using ControlTec.Data;
+using ControlTec.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
+using QuestPDF.Infrastructure;  
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -52,6 +54,9 @@ builder.Services.AddCors(options =>
     });
 });
 
+QuestPDF.Settings.License = LicenseType.Community;
+
+
 // 5. SWAGGER + JWT
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
@@ -79,6 +84,9 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
+
+builder.Services.AddScoped<ICertificadoService, CertificadoService>();
+
 
 var app = builder.Build();
 

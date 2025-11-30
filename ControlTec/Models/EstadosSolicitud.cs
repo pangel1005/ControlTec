@@ -2,15 +2,15 @@
 {
     public static class EstadosSolicitud
     {
-        public const string Borrador = "Borrador";
+        public const string Pendiente = "Pendiente";
         public const string Depositada = "Depositada";
-        public const string EnRevisionVUS = "EnRevisionVUS";
-        public const string DevueltaVUS = "DevueltaVUS";
-        public const string EnEvaluacionUPC = "EnEvaluacionUPC";
-        public const string DevueltaTecnico = "DevueltaTecnico";
-        public const string EnDireccion = "EnDireccion";
-        public const string EnDNCD = "EnDNCD";
+        public const string ValidacionRecepcion = "Validación Recepción";
+        public const string EvaluacionTecnica = "Evaluación Técnica";
+        public const string AprobacionDIGEAMPS = "Aprobación DIGEAMPS";
+        public const string AprobacionDNCD = "Aprobación DNCD";
+        public const string Devuelta = "Devuelta";          // 👈 NUEVO
         public const string Aprobada = "Aprobada";
         public const string Rechazada = "Rechazada";
+        public const string Entregada = "Entregada";
     }
 }

@@ -21,5 +21,7 @@
 
         public ICollection<HistorialEstado> HistorialEstados { get; set; } = new List<HistorialEstado>();
 
+        public string? RutaCertificado { get; set; }
+
     }
 }
