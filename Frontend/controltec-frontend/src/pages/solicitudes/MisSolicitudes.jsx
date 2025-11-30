@@ -23,6 +23,7 @@ export default function MisSolicitudes() {
       setError("");
 
       try {
+        const usuarioId = usuario.id ?? usuario.Id;
         const res = await api.get(`/api/Solicitudes/usuario/${usuario.id}`);
         setSolicitudes(res.data);
       } catch (err) {

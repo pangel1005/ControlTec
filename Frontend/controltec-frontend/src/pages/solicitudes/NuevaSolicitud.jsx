@@ -4,13 +4,15 @@ import { useNavigate } from "react-router-dom";
 import api from "../../api/apiClient";
 
 export default function NuevaSolicitud() {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
+
   const [servicios, setServicios] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [expandedId, setExpandedId] = useState(null);
   const [filesByService, setFilesByService] = useState({});
+  const [submitting, setSubmitting] = useState(false); // 👈 nuevo
 
   useEffect(() => {
     const cargarServicios = async () => {
@@ -33,7 +35,6 @@ export default function NuevaSolicitud() {
 
   // ================== HELPERS PDF ==================
 
-  // Abre una ruta relativa de la API en una nueva pestaña
   const openRuta = (ruta) => {
     if (!ruta) {
       alert("No hay archivo configurado para este servicio.");
@@ -44,11 +45,8 @@ export default function NuevaSolicitud() {
     window.open(url, "_blank");
   };
 
-  // Devuelve RutaFormularioBase de un servicio por Id (para A y B)
   const getRutaByServiceId = (serviceId) => {
-    const s = servicios.find(
-      (x) => (x.id ?? x.Id) === serviceId
-    );
+    const s = servicios.find((x) => (x.id ?? x.Id) === serviceId);
     if (!s) return null;
     return s.rutaFormularioBase || s.RutaFormularioBase || null;
   };
@@ -88,31 +86,20 @@ export default function NuevaSolicitud() {
     handleFilesSelected(servicioId, e.dataTransfer.files);
   };
 
-  // 👉 NUEVA LÓGICA: qué abre cada botón
-
-  // Botón "Descargar formulario para rellenar"
+  // 👉 Botón "Descargar formulario para rellenar"
   const handleDownloadFormulario = (servicio) => {
     let ruta = null;
 
-    // IDs según tu seed de BD:
-    // 1..5 = LI-UPC-01..05
-    // 6 = Solicitud A
-    // 7 = Solicitud B-2
-
     if (servicio.id === 1) {
-      // LI-UPC-01 usa Formulario A
-      ruta = getRutaByServiceId(6); // Solicitud A
+      ruta = getRutaByServiceId(6); // Formulario A
     } else if (servicio.id === 2 || servicio.id === 3) {
-      // LI-UPC-02 y 03 usan Formulario B
-      ruta = getRutaByServiceId(7); // Solicitud B-2
+      ruta = getRutaByServiceId(7); // Formulario B-2
     } else if (servicio.id === 4 || servicio.id === 5) {
-      // LI-UPC-04 y 05: por ahora NO tienen A/B
       alert(
         "Este servicio no tiene un formulario A/B asociado. Utiliza el PDF informativo."
       );
       return;
     } else {
-      // Solicitud A (6) y B-2 (7) se quedan como estaban:
       ruta = servicio.rutaFormularioBase;
     }
 
@@ -124,9 +111,8 @@ export default function NuevaSolicitud() {
     openRuta(ruta);
   };
 
-  // Botón "Descargar pdf con más información"
+  // 👉 Botón "Descargar pdf con más información"
   const handleDownloadInfo = (servicio) => {
-    // Para LI-UPC-01..05 usamos su propio LI-UPC-0X.pdf
     if (servicio.id >= 1 && servicio.id <= 5) {
       const ruta = servicio.rutaFormularioBase;
       if (!ruta) {
@@ -137,32 +123,76 @@ export default function NuevaSolicitud() {
       return;
     }
 
-    // Para Solicitud A y B-2 (6 y 7) lo dejamos como mensaje por ahora
     alert(
       `Descarga de PDF informativo para el servicio "${servicio.nombre}" pendiente de implementar.`
     );
   };
 
-const handleSubirDocumentos = (servicio) => {
-  const files = filesByService[servicio.id] || [];
+  // ================== GUARDAR EN BD ==================
 
-  const confirmado = window.confirm(
-    `¿Confirmas enviar la solicitud para "${servicio.nombre}" con ${files.length} documento(s)?`
-  );
+  const handleSubirDocumentos = async (servicio) => {
+    const files = filesByService[servicio.id] || [];
 
-  if (!confirmado) return;
+    if (files.length === 0) {
+      alert("Debes adjuntar al menos un documento.");
+      return;
+    }
 
-  // 👉 Aquí en el futuro haremos:
-  // 1) Crear la solicitud en backend
-  // 2) Subir los PDFs
-  // Por ahora solo simulamos el flujo y redirigimos.
+    const confirmado = window.confirm(
+      `¿Confirmas enviar la solicitud para "${servicio.nombre}" con ${files.length} documento(s)?`
+    );
 
-  navigate("/mis-solicitudes", {
-    state: {
-      successMessage: `Tu solicitud para "${servicio.nombre}" fue enviada correctamente.`,
-    },
-  });
-};
+    if (!confirmado || submitting) return;
+
+    try {
+      setSubmitting(true);
+
+      // 1) Crear la solicitud en el backend
+      const iniciarRes = await api.post("/api/Solicitudes/iniciar", {
+        servicioId: servicio.id,
+      });
+
+      const solicitudId =
+        iniciarRes.data.id ?? iniciarRes.data.Id ?? iniciarRes.data.solicitudId;
+
+      if (!solicitudId) {
+        throw new Error("No se pudo obtener el Id de la solicitud creada.");
+      }
+
+      // 2) Subir cada documento a /api/Solicitudes/{id}/documentos
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("archivo", file);
+
+        await api.post(`/api/Solicitudes/${solicitudId}/documentos`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+
+      // 3) Marcar la solicitud como enviada / depositada
+      await api.post(`/api/Solicitudes/${solicitudId}/enviar`, {
+        comentario: "Solicitud enviada desde el portal de ControlTec.",
+      });
+
+      // 4) Redirigir a Mis solicitudes con mensaje de éxito
+      navigate("/mis-solicitudes", {
+        state: {
+          successMessage: `Tu solicitud para "${servicio.nombre}" fue enviada correctamente.`,
+        },
+      });
+        } catch (err) {
+        console.error("Error al enviar solicitud:", err);
+        console.error("Status:", err.response?.status);
+        console.error("Respuesta del backend:", err.response?.data);
+        alert(
+            "Ocurrió un error al guardar la solicitud o subir los documentos. Inténtalo de nuevo."
+        );
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   // ================== RENDER ==================
 
@@ -201,12 +231,10 @@ const handleSubirDocumentos = (servicio) => {
           };
 
           const isExpanded = expandedId === servicio.id;
-        const docsRequeridos = servicio.documentosRequeridos || [];
-        const selectedFiles = filesByService[servicio.id] || [];
+          const docsRequeridos = servicio.documentosRequeridos || [];
+          const selectedFiles = filesByService[servicio.id] || [];
 
-        // ✅ El botón se habilita si hay al menos 1 archivo
-        const canSubmit = selectedFiles.length >= 1;
-
+          const canSubmit = selectedFiles.length >= 1 && !submitting;
 
           return (
             <div
@@ -323,7 +351,7 @@ const handleSubirDocumentos = (servicio) => {
                       disabled={!canSubmit}
                       onClick={() => handleSubirDocumentos(servicio)}
                     >
-                      Subir documentos
+                      {submitting ? "Enviando..." : "Subir documentos"}
                     </button>
 
                     <button

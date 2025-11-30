@@ -2,6 +2,7 @@ import axios from "axios";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || "https://localhost:7195",
+  withCredentials: false,
 });
 
 // Agrega el token en cada request si existe
