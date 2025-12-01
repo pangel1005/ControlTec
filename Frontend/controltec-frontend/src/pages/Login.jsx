@@ -19,14 +19,16 @@ const handleSubmit = async (e) => {
   setLoading(true);
 
   try {
-    const user = await login(correo, password);  // 👈 ahora obtenemos el usuario
+    const user = await login(correo, password); // login del contexto
 
-    const rol = user?.roll ?? user?.Roll;        // por si viene con R mayúscula
+    const rol = user?.roll ?? user?.Roll;
 
     if (rol === "Solicitante") {
-      navigate("/mis-solicitudes");             // 👉 solicitante va a Mis solicitudes
+      navigate("/mis-solicitudes");
+    } else if (rol === "VUS") {
+      navigate("/vus/solicitudes");
     } else {
-      navigate("/dashboard");                   // 👉 otros roles al dashboard
+      navigate("/dashboard");
     }
   } catch (err) {
     console.error(err);
@@ -35,6 +37,9 @@ const handleSubmit = async (e) => {
     setLoading(false);
   }
 };
+
+
+
 
 
   return (

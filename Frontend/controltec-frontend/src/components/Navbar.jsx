@@ -1,6 +1,6 @@
 // src/components/Navbar.jsx
 import { Link, useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";  // <-- AQUÍ EL CAMBIO
+import { useAuth } from "../context/AuthContext";
 
 export default function Navbar() {
   const { usuario, logout } = useAuth();
@@ -10,6 +10,8 @@ export default function Navbar() {
     logout();
     navigate("/login");
   };
+
+  const rol = usuario?.roll || usuario?.Roll;
 
   return (
     <nav
@@ -29,14 +31,25 @@ export default function Navbar() {
         {usuario && (
           <>
             <span>
-              {usuario.nombre} ({usuario.roll})
+              {usuario.nombre} ({rol})
             </span>
+
             <Link to="/dashboard" style={{ color: "#e5e7eb" }}>
               Dashboard
             </Link>
-            <Link to="/mis-solicitudes" style={{ color: "#e5e7eb" }}>
-              Mis solicitudes
-            </Link>
+
+            {rol === "Solicitante" && (
+              <Link to="/mis-solicitudes" style={{ color: "#e5e7eb" }}>
+                Mis solicitudes
+              </Link>
+            )}
+
+            {(rol === "VUS" || rol === "Admin") && (
+              <Link to="/vus/solicitudes" style={{ color: "#e5e7eb" }}>
+                Bandeja VUS
+              </Link>
+            )}
+
             <button
               onClick={handleLogout}
               style={{
