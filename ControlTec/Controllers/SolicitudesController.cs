@@ -39,7 +39,6 @@ namespace ControlTec.Controllers
         // Helpers internos
         // ==============================
 
-        // Helper: obtener el Id de usuario del token
         private int GetUserIdFromToken()
         {
             var claim = User.FindFirst(ClaimTypes.NameIdentifier);
@@ -49,7 +48,6 @@ namespace ControlTec.Controllers
             return int.Parse(claim.Value);
         }
 
-        // Clase helper para transiciones por rol
         private class TransicionRol
         {
             public string Rol { get; set; } = null!;
@@ -57,7 +55,6 @@ namespace ControlTec.Controllers
             public string Hacia { get; set; } = null!;
         }
 
-        // Catálogo de nombres de estados para evitar errores de escritura
         private static class EstadosSolicitud
         {
             public const string Pendiente = "Pendiente";
@@ -72,6 +69,49 @@ namespace ControlTec.Controllers
             public const string Rechazada = "Rechazada";
             public const string Entregada = "Entregada";
         }
+
+        // ==============================
+        // Bandeja por rol (para el GET)
+        // ==============================
+        private static readonly Dictionary<string, string[]> EstadosPorRol = new()
+        {
+            // Ventanilla Única de Servicios
+            { "VUS", new[]
+                {
+                    EstadosSolicitud.Depositada,     // cuando el usuario la envía
+                    EstadosSolicitud.Devuelta,       // cuando vuelve corregida
+                    EstadosSolicitud.AprobacionDNCD  // cuando DNCD la devuelve aprobada
+                }
+            },
+
+            // Técnico UPC
+            { "TecnicoUPC", new[]
+                {
+                    EstadosSolicitud.ValidacionRecepcion
+                }
+            },
+
+            // Encargado UPC (DIGEAMPS)
+            { "EncargadoUPC", new[]
+                {
+                    EstadosSolicitud.EvaluacionTecnica
+                }
+            },
+
+            // DNCD
+            { "DNCD", new[]
+                {
+                    EstadosSolicitud.AprobacionDIGEAMPS
+                }
+            },
+
+            // Dirección
+            { "Direccion", new[]
+                {
+                    EstadosSolicitud.EnRevisionVUS
+                }
+            }
+        };
 
         // ======================================
         // 0. INICIAR SOLICITUD (Solicitante / Usuario / Admin)
@@ -147,16 +187,64 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 1. GET: TODAS LAS SOLICITUDES (solo Admin)
+        // 1. GET: SOLICITUDES SEGÚN EL ROL LOGUEADO (BANDEJA)
         // ======================================
         [HttpGet]
-        [Authorize(Roles = "Admin")]
-        public async Task<ActionResult<IEnumerable<Solicitud>>> GetSolicitudes()
+        public async Task<ActionResult<IEnumerable<object>>> GetSolicitudes()
         {
-            return await _context.Solicitudes
+            var userId = GetUserIdFromToken();
+            var rol = User.FindFirst(ClaimTypes.Role)?.Value ?? string.Empty;
+
+            var query = _context.Solicitudes
                 .Include(s => s.Servicio)
                 .Include(s => s.Usuario)
+                .AsQueryable();
+
+            // 1) ADMIN -> ve todas
+            if (string.Equals(rol, "Admin", StringComparison.OrdinalIgnoreCase))
+            {
+                // sin filtros extra
+            }
+            // 2) SOLICITANTE / USUARIO -> solo sus propias solicitudes
+            else if (rol == "Solicitante" || rol == "Usuario")
+            {
+                query = query.Where(s => s.UsuarioId == userId);
+            }
+            // 3) ROLES INTERNOS -> por estado que les corresponde
+            else if (EstadosPorRol.TryGetValue(rol, out var estadosAsignados))
+            {
+                query = query.Where(s => estadosAsignados.Contains(s.Estado));
+            }
+            else
+            {
+                // si el rol no está mapeado, no dejamos usar este endpoint
+                return Forbid();
+            }
+
+            var lista = await query
+                .OrderByDescending(s => s.FechaCreacion)
+                .Select(s => new
+                {
+                    s.Id,
+                    s.Estado,
+                    s.FechaCreacion,
+                    s.RutaCertificado,
+                    Usuario = s.Usuario == null ? null : new
+                    {
+                        s.Usuario.Id,
+                        s.Usuario.Nombre,
+                        s.Usuario.Correo,
+                        s.Usuario.Roll
+                    },
+                    Servicio = s.Servicio == null ? null : new
+                    {
+                        s.Servicio.Id,
+                        s.Servicio.Nombre
+                    }
+                })
                 .ToListAsync();
+
+            return Ok(lista);
         }
 
         // ======================================
@@ -168,7 +256,6 @@ namespace ControlTec.Controllers
         {
             var currentUserId = GetUserIdFromToken();
 
-            // Si no es admin, solo puede ver sus propias solicitudes
             if (!User.IsInRole("Admin") && usuarioId != currentUserId)
                 return Forbid();
 
@@ -274,7 +361,7 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 5. DETALLE SOLICITUD (Solicitante/Admin)
+        // 5. DETALLE SOLICITUD
         // ======================================
         [HttpGet("{id}/detalle")]
         [Authorize(Roles = "Usuario,Solicitante,Admin, VUS, TecnicoUPC, EncargadoUPC, DNCD, Direccion")]
@@ -292,8 +379,6 @@ namespace ControlTec.Controllers
 
             var currentUserId = GetUserIdFromToken();
 
-            // Solicitante solo puede ver sus solicitudes.
-            // Roles internos y Admin pueden ver todas.
             if (!User.IsInRole("Admin")
                 && !User.IsInRole("VUS")
                 && !User.IsInRole("TecnicoUPC")
@@ -314,7 +399,7 @@ namespace ControlTec.Controllers
                 solicitud.Id,
                 solicitud.Estado,
                 solicitud.FechaCreacion,
-                solicitud.RutaCertificado,   // 👈 string simple, nada raro
+                solicitud.RutaCertificado,
                 Usuario = solicitud.Usuario == null ? null : new
                 {
                     solicitud.Usuario.Id,
@@ -439,7 +524,7 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 7. CAMBIAR ESTADO (roles internos + Devuelta/Rechazada)
+        // 7. CAMBIAR ESTADO
         // ======================================
         [HttpPost("{id}/cambiar-estado")]
         [Authorize(Roles = "Admin,VUS,TecnicoUPC,EncargadoUPC,DNCD,Direccion")]
@@ -465,12 +550,11 @@ namespace ControlTec.Controllers
 
             var rolUsuario = usuario.Roll?.Trim() ?? string.Empty;
 
-            // Catálogo de transiciones permitidas por rol
             var transiciones = new List<TransicionRol>
             {
-                // VUS: recepción inicial y re-toma de Devueltas
+                // VUS
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.ValidacionRecepcion },
-                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },   // devuelve al solicitante
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta,  Hacia = EstadosSolicitud.ValidacionRecepcion },
 
                 // Técnico UPC
@@ -488,7 +572,7 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Rechazada },
 
-                // VUS segunda vez (antes de dirección)
+                // VUS segunda vez
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.EnRevisionVUS },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
@@ -498,7 +582,7 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Rechazada },
 
-                // Admin: igual que Dirección + Entregada
+                // Admin
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Aprobada },
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Rechazada },
@@ -510,13 +594,11 @@ namespace ControlTec.Controllers
 
             if (esAdmin)
             {
-                // Admin puede usar cualquiera de las transiciones definidas
                 transicionPermitida = transiciones.Any(t =>
                     string.Equals(t.Hacia, estadoNuevo, StringComparison.OrdinalIgnoreCase));
             }
             else
             {
-                // Resto de roles: solo sus transiciones específicas
                 transicionPermitida = transiciones.Any(t =>
                     string.Equals(t.Rol, rolUsuario, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(t.Desde ?? string.Empty,
@@ -533,7 +615,6 @@ namespace ControlTec.Controllers
 
             solicitud.Estado = estadoNuevo;
 
-            // Si es un rechazo o devolución y no mandaron comentario, ponemos uno por defecto
             var comentario = dto.Comentario;
             if ((string.Equals(estadoNuevo, EstadosSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase) ||
                  string.Equals(estadoNuevo, EstadosSolicitud.Devuelta, StringComparison.OrdinalIgnoreCase)) &&
