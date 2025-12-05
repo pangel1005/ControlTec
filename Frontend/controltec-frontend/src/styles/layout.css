@@ -81,9 +81,9 @@ body {
    CONTENEDOR GENERAL DE PÁGINA
 ================================ */
 .page-container {
-  max-width: 1200px;
+  max-width: 1400px;       /* ⬅️ antes 1200px */
   margin: 0 auto;
-  padding: 30px 25px;
+  padding: 40px 40px;       /* ⬅️ un poco más de aire lateral */
 }
 
 /* ================================
@@ -135,4 +135,232 @@ body {
 .btn-primary:disabled {
   opacity: 0.7;
   cursor: default;
+}
+
+/* ================================
+   TARJETAS ADMIN DASHBOARD
+================================ */
+.admin-card {
+  background: #f0fdf4; /* verde muy claro */
+  border: 1px solid #bbf7d0;
+  border-radius: 1rem;
+  padding: 1.5rem 1.75rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.04);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease,
+    border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.admin-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 22px rgba(0, 0, 0, 0.08);
+  border-color: #22c55e;
+  background: #ecfdf3;
+}
+
+.admin-card-icon {
+  font-size: 2rem;
+}
+
+.admin-card-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #064e3b;
+}
+
+.admin-card-text {
+  font-size: 0.95rem;
+  color: #374151;
+}
+
+/* ================================
+   LAYOUT ADMIN (USUARIOS / SERVICIOS)
+================================ */
+.admin-two-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.2fr); /* ⬅️ columnas más amplias y simétricas */
+  gap: 2.5rem;                                              /* ⬅️ más espacio entre paneles */
+  margin-top: 2rem;
+}
+
+@media (max-width: 900px) {
+  .admin-two-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.admin-panel {
+  background: #f9fafb;
+  border-radius: 1rem;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.02);
+}
+
+.admin-panel h2 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #064e3b;
+}
+
+.admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  margin-top: 0.5rem;
+}
+
+.table-wrapper {
+  margin-top: 0.75rem;
+  overflow-x: auto;
+}
+/* ====== LISTA DE SERVICIOS (ADMIN) ====== */
+
+.service-list {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.service-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border-radius: 0.9rem;
+  border: 1px solid #e5e7eb;
+  background: #ffffff;
+}
+
+.service-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.service-title {
+  font-weight: 600;
+  color: #111827;
+}
+
+.service-description {
+  font-size: 0.9rem;
+  color: #4b5563;
+}
+
+.service-meta {
+  margin-top: 0.25rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.service-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.service-btn-edit,
+.service-btn-delete {
+  font-size: 0.8rem;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+
+/* botón editar */
+.service-btn-edit {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.service-btn-edit:hover {
+  background: #d1fae5;
+}
+
+/* botón eliminar */
+.service-btn-delete {
+  background: #fee2e2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.service-btn-delete:hover {
+  background: #fecaca;
+}
+/* ================================
+   FORM GROUPS / CAMPOS
+================================ */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #111827;
+}
+
+/* inputs y textareas con el mismo estilo */
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="number"],
+.form-group input[type="password"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.95rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;             /* descripción corta y requisitos más cómodos */
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px #bbf7d0;
+}
+
+/* ================================
+   CHECKBOX BONITOS
+================================ */
+
+/* para que label + checkbox queden en línea */
+.form-group-inline .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+/* checkbox más grande y con color verde */
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #14532d; /* verde ControlTec (soportado en navegadores modernos) */
 }

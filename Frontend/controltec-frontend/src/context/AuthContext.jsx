@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/apiClient";
 
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -9,8 +10,7 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // 🔹 Al montar la app, recuperamos token/usuario y
-  //     dejamos configurado el header Authorization global
+  // 🔹 Recuperar sesión al montar
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("usuario");
@@ -18,8 +18,6 @@ export function AuthProvider({ children }) {
     if (storedToken && storedUser) {
       setToken(storedToken);
       setUsuario(JSON.parse(storedUser));
-
-      // MUY IMPORTANTE: forzamos el header Authorization en axios
       api.defaults.headers.common.Authorization = `Bearer ${storedToken}`;
     }
 
@@ -35,34 +33,57 @@ export function AuthProvider({ children }) {
 
     const data = res.data; // { token, usuario }
 
-    // Guardamos en estado
     setToken(data.token);
     setUsuario(data.usuario);
 
-    // Guardamos en localStorage
     localStorage.setItem("token", data.token);
     localStorage.setItem("usuario", JSON.stringify(data.usuario));
 
-    // MUY IMPORTANTE: forzamos el header Authorization en axios
     api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
 
-    return data.usuario; // por si el login page quiere usarlo
+    return data.usuario;
+  };
+
+  // 🔹 Registro (solo crea el usuario; SIN correo de verificación todavía)
+  const register = async (payload) => {
+    /*
+      payload esperado:
+      {
+        nombre,
+        correo,
+        password,
+        cedula,
+        tipoUsuario,        // "Solicitante" o "Interno"
+        rolInternoDeseado,  // opcional
+      }
+    */
+
+    const res = await api.post("/api/Auth/register", payload);
+
+    // 👉 AQUÍ es donde el otro desarrollador puede enganchar
+    // el envío de correo de verificación cuando exista
+    // el endpoint correspondiente en el backend
+    //
+    // Ejemplo futuro:
+    // await api.post("/api/Auth/enviar-confirmacion", { correo: payload.correo });
+
+    return res.data; // { mensaje, usuario }
   };
 
   const logout = () => {
     setToken(null);
     setUsuario(null);
 
-    // Quitamos token guardado
     localStorage.removeItem("token");
     localStorage.removeItem("usuario");
 
-    // Y quitamos el header Authorization global
     delete api.defaults.headers.common.Authorization;
   };
 
   return (
-    <AuthContext.Provider value={{ usuario, token, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{ usuario, token, loading, login, logout, register }}
+    >
       {children}
     </AuthContext.Provider>
   );

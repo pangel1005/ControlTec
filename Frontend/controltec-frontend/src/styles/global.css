@@ -126,3 +126,68 @@
   border-color: #d1d5db !important;
   cursor: default !important;
 }
+/* ================================
+   FORM GROUPS / CAMPOS
+================================ */
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.95rem;
+}
+
+.form-group label {
+  font-weight: 500;
+  color: #111827;
+}
+
+/* inputs y textareas con el mismo estilo */
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="number"],
+.form-group input[type="password"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 0.95rem;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 80px;             /* descripción corta y requisitos más cómodos */
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  border-color: #22c55e;
+  box-shadow: 0 0 0 1px #bbf7d0;
+}
+
+/* ================================
+   CHECKBOX BONITOS
+================================ */
+
+/* para que label + checkbox queden en línea */
+.form-group-inline .checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  color: #111827;
+}
+
+/* checkbox más grande y con color verde */
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #14532d; /* verde ControlTec (soportado en navegadores modernos) */
+}

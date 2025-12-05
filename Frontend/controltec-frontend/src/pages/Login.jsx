@@ -13,34 +13,32 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
-  setLoading(true);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-  try {
-    const user = await login(correo, password); // login del contexto
+    try {
+      const user = await login(correo, password);
 
-    const rol = user?.roll ?? user?.Roll;
+      const rol = user?.roll ?? user?.Roll ?? user?.rol;
 
-    if (rol === "Solicitante") {
-      navigate("/mis-solicitudes");
-    } else if (rol === "VUS") {
-      navigate("/vus/solicitudes");
-    } else {
-      navigate("/dashboard");
+      if (rol === "Solicitante") {
+        navigate("/mis-solicitudes");
+      } else if (rol === "VUS") {
+        navigate("/vus/solicitudes");
+      } else if (rol === "Admin") {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Correo o contraseña incorrectos o error en el servidor.");
+    } finally {
+      setLoading(false);
     }
-  } catch (err) {
-    console.error(err);
-    setError("Correo o contraseña incorrectos o error en el servidor.");
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-
-
+  };
 
   return (
     <div className="login-page">
@@ -112,10 +110,16 @@ const handleSubmit = async (e) => {
           </button>
         </form>
 
-        {/* Texto inferior (sin Google / GitHub) */}
+        {/* Enlace a registro */}
         <p className="login-register-text">
           ¿No tienes cuenta?{" "}
-          <span>Contacta al administrador de ControlTec.</span>
+          <span
+            className="link-button"
+            style={{ cursor: "pointer" }}
+            onClick={() => navigate("/registro")}
+          >
+            Regístrate aquí
+          </span>
         </p>
       </div>
     </div>

@@ -19,12 +19,17 @@ export default function Navbar() {
         display: "flex",
         justifyContent: "space-between",
         padding: "0.75rem 1.5rem",
-        background: "#020617",
-        color: "#e5e7eb",
+        background: "#065f46", // verde
+        color: "#f9fafb",
       }}
     >
-      <div>
-        <strong>ControlTec</strong>
+      {/* Logo / título */}
+      <div style={{ fontWeight: "700", cursor: "pointer" }} onClick={() => {
+        if (rol === "Admin") navigate("/admin");
+        else if (rol === "Solicitante") navigate("/mis-solicitudes");
+        else if (rol === "VUS") navigate("/vus/solicitudes");
+      }}>
+        ControlTec
       </div>
 
       <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
@@ -34,20 +39,31 @@ export default function Navbar() {
               {usuario.nombre} ({rol})
             </span>
 
-            <Link to="/dashboard" style={{ color: "#e5e7eb" }}>
-              Dashboard
-            </Link>
-
+            {/* Menú según rol */}
             {rol === "Solicitante" && (
-              <Link to="/mis-solicitudes" style={{ color: "#e5e7eb" }}>
+              <Link to="/mis-solicitudes" style={{ color: "#f9fafb" }}>
                 Mis solicitudes
               </Link>
             )}
 
-            {(rol === "VUS" || rol === "Admin") && (
-              <Link to="/vus/solicitudes" style={{ color: "#e5e7eb" }}>
+            {rol === "VUS" && (
+              <Link to="/vus/solicitudes" style={{ color: "#f9fafb" }}>
                 Bandeja VUS
               </Link>
+            )}
+
+            {rol === "Admin" && (
+              <>
+                <Link to="/admin" style={{ color: "#f9fafb" }}>
+                  Inicio admin
+                </Link>
+                <Link to="/admin/usuarios" style={{ color: "#f9fafb" }}>
+                  Usuarios
+                </Link>
+                <Link to="/admin/servicios" style={{ color: "#f9fafb" }}>
+                  Servicios
+                </Link>
+              </>
             )}
 
             <button
@@ -55,9 +71,9 @@ export default function Navbar() {
               style={{
                 padding: "0.35rem 0.8rem",
                 borderRadius: "0.5rem",
-                border: "1px solid #475569",
-                background: "#0f172a",
-                color: "#e5e7eb",
+                border: "1px solid #bbf7d0",
+                background: "#047857",
+                color: "#f9fafb",
                 cursor: "pointer",
               }}
             >
