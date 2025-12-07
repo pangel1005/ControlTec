@@ -98,7 +98,7 @@
   background: #f3f4f6;
 }
 
-/* Botón rojo para acciones destructivas (cancelar solicitud, etc.) */
+/* Botón rojo para acciones destructivas */
 .btn-danger {
   display: inline-flex;
   align-items: center;
@@ -126,6 +126,7 @@
   border-color: #d1d5db !important;
   cursor: default !important;
 }
+
 /* ================================
    FORM GROUPS / CAMPOS
 ================================ */
@@ -161,7 +162,7 @@
 
 .form-group textarea {
   resize: vertical;
-  min-height: 80px;             /* descripción corta y requisitos más cómodos */
+  min-height: 80px;
 }
 
 .form-group input:focus,
@@ -175,7 +176,6 @@
    CHECKBOX BONITOS
 ================================ */
 
-/* para que label + checkbox queden en línea */
 .form-group-inline .checkbox-label {
   display: inline-flex;
   align-items: center;
@@ -184,10 +184,30 @@
   color: #111827;
 }
 
-/* checkbox más grande y con color verde */
 .checkbox-label input[type="checkbox"] {
   width: 18px;
   height: 18px;
   cursor: pointer;
-  accent-color: #14532d; /* verde ControlTec (soportado en navegadores modernos) */
+  accent-color: #14532d;
+}
+
+/* ================================
+   BOTÓN AMARILLO
+================================ */
+
+.btn-warning {
+  display: block;
+  width: 100%;
+  background: #facc15;
+  border: 1px solid #eab308;
+  color: #000;
+  padding: 0.6rem;
+  border-radius: 0.5rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+
+.btn-warning:hover {
+  background: #eab308;
 }

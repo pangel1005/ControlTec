@@ -5,20 +5,25 @@ import {
   Route,
   Navigate,
 } from "react-router-dom";
+// src/router/AppRouter.jsx
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import ProtectedRoute from "../components/ProtectedRoute";
 
-import Navbar from "./components/Navbar";
-import Login from "./pages/Login";
-import Dashboard from "./pages/Dashboard";
-import MisSolicitudes from "./pages/solicitudes/MisSolicitudes";
-import NuevaSolicitud from "./pages/solicitudes/NuevaSolicitud.jsx";
-import SolicitudDetalle from "./pages/solicitudes/SolicitudDetalle.jsx";
-import VusDashboard from "./pages/VusDashboard.jsx";
-import ProtectedRoute from "./components/ProtectedRoute";
+import Login from "../pages/auth/Login.jsx";
+import Register from "../pages/auth/Register.jsx";
 
-import "./styles/global.css";
-import "./styles/layout.css";
-import "./styles/auth.css";
-import "./styles/solicitudes.css";
+import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
+import AdminServicios from "../pages/admin/AdminServicios.jsx";
+import AdminUsuarios from "../pages/admin/AdminUsuarios.jsx";
+
+import MisSolicitudes from "../pages/solicitante/MisSolicitudes.jsx";
+import NuevaSolicitud from "../pages/solicitante/NuevaSolicitud.jsx";
+import SolicitudDetalle from "../pages/solicitante/SolicitudDetalle.jsx";
+
+import VusDashboard from "../pages/vus/VusDashboard.jsx";
+import VusSolicitudes from "../pages/vus/VusSolicitudes.jsx";
+
+import UpcDashboard from "../pages/upc/UpcDashboard.jsx";
 
 export default function App() {
   return (

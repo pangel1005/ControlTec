@@ -1,4 +1,4 @@
-// src/pages/solicitudes/MisSolicitudes.jsx
+// src/pages/solicitante/MisSolicitudes.jsx
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/apiClient";

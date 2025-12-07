@@ -7,16 +7,27 @@ export default function ProtectedRoute({ children, roles }) {
 
   if (loading) return <p>Cargando sesión...</p>;
 
-  if (!token) {
+  // Si no hay token o no hay usuario, mandamos al login
+  if (!token || !usuario) {
     return <Navigate to="/login" replace />;
   }
 
-  // Si se pasaron roles, validamos
-  if (roles && roles.length > 0) {
-    const rolUsuario = usuario?.roll || usuario?.Roll;
-    if (!rolUsuario || !roles.includes(rolUsuario)) {
-      return <p>No tienes permiso para ver esta página.</p>;
-    }
+  // Normalizamos el rol del usuario (aceptando varias propiedades)
+  const rolUsuario = (
+    usuario.roll ??
+    usuario.Roll ??
+    usuario.rol ??
+    usuario.role ??
+    ""
+  ).trim();
+
+  // Si se pasaron roles, validamos que el usuario esté en la lista
+  if (roles && roles.length > 0 && !roles.includes(rolUsuario)) {
+    return (
+      <div className="page-container">
+        <p>No tienes permiso para ver esta página.</p>
+      </div>
+    );
   }
 
   return children;

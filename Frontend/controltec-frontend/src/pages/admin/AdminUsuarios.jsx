@@ -5,7 +5,7 @@ import api from "../../api/apiClient";
 const ROLES_POSIBLES = [
   "Solicitante",
   "VUS",
-  "UPC",
+  "TecnicoUPC",
   "EncargadoUPC",
   "Direccion",
   "DNCD",

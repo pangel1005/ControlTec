@@ -364,3 +364,133 @@ body {
   cursor: pointer;
   accent-color: #14532d; /* verde ControlTec (soportado en navegadores modernos) */
 }
+/* ====== Layout general VUS ====== */
+
+.vus-layout {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.vus-header {
+  margin-bottom: 1.5rem;
+}
+
+.vus-header h1 {
+  font-size: 2.1rem;
+  margin-bottom: 0.25rem;
+}
+
+.vus-header p {
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+/* ====== Tarjetas ====== */
+
+.vus-card {
+  background: #f9fafb;
+  border-radius: 0.75rem;
+  border: 1px solid #e5e7eb;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.vus-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.vus-card-header h2,
+.vus-card-title {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.vus-pill {
+  font-size: 0.8rem;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  background: #e5f2ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+/* ====== Tabla ====== */
+
+.tabla-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.tabla-vus {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.tabla-vus thead {
+  background: #0b2340;
+  color: #f9fafb;
+}
+
+.tabla-vus th,
+.tabla-vus td {
+  padding: 0.55rem 0.65rem;
+  text-align: left;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.tabla-vus tbody tr:nth-child(even) {
+  background: #f3f4f6;
+}
+
+.tabla-vus tbody tr:hover {
+  background: #e5f2ff;
+}
+
+.tabla-vus .col-servicio {
+  white-space: normal;
+}
+
+/* Botón ver ocupando el ancho de la celda */
+.btn-full {
+  display: inline-block;
+  width: 100%;
+  text-align: center;
+}
+
+/* ====== Buscar por cédula ====== */
+
+.vus-search-form {
+  display: flex;
+  flex-direction: row;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.vus-search-input {
+  flex: 1;
+}
+
+.vus-search-btn {
+  min-width: 140px;
+}
+
+.vus-search-results h3 {
+  margin-top: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Responsive: apilar input y botón en pantallas pequeñas */
+@media (max-width: 768px) {
+  .vus-search-form {
+    flex-direction: column;
+  }
+
+  .vus-search-btn {
+    width: 100%;
+  }
+}

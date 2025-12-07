@@ -2,7 +2,6 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import api from "../api/apiClient";
 
-
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -12,39 +11,61 @@ export function AuthProvider({ children }) {
 
   // 🔹 Recuperar sesión al montar
   useEffect(() => {
-    const storedToken = localStorage.getItem("token");
-    const storedUser = localStorage.getItem("usuario");
+    try {
+      const storedToken = localStorage.getItem("token");
+      const storedUser = localStorage.getItem("usuario");
 
-    if (storedToken && storedUser) {
-      setToken(storedToken);
-      setUsuario(JSON.parse(storedUser));
-      api.defaults.headers.common.Authorization = `Bearer ${storedToken}`;
+      if (storedToken && storedUser) {
+        setToken(storedToken);
+        setUsuario(JSON.parse(storedUser));
+        api.defaults.headers.common.Authorization = `Bearer ${storedToken}`;
+      }
+    } catch (err) {
+      console.error("Error restaurando sesión desde localStorage:", err);
+      localStorage.removeItem("token");
+      localStorage.removeItem("usuario");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, []);
 
   // 🔹 Login usando la API real
   const login = async (correo, password) => {
+    // IMPORTANTE: esta es la ruta real de tu backend
     const res = await api.post("/api/Auth/login", {
       correo,
       password,
     });
 
-    const data = res.data; // { token, usuario }
+    const data = res.data || {};
 
-    setToken(data.token);
-    setUsuario(data.usuario);
+    // Flexibilidad por si el backend cambia nombres de campos
+    const jwt = data.token || data.accessToken || data.jwt;
+    const user =
+      data.usuario ||
+      data.user ||
+      data.usuarioDTO ||
+      null;
 
-    localStorage.setItem("token", data.token);
-    localStorage.setItem("usuario", JSON.stringify(data.usuario));
+    if (!jwt || !user) {
+      console.error("Respuesta inesperada de /api/Auth/login:", data);
+      throw new Error("Respuesta de login inválida.");
+    }
 
-    api.defaults.headers.common.Authorization = `Bearer ${data.token}`;
+    setToken(jwt);
+    setUsuario(user);
 
-    return data.usuario;
+    localStorage.setItem("token", jwt);
+    localStorage.setItem("usuario", JSON.stringify(user));
+
+    api.defaults.headers.common.Authorization = `Bearer ${jwt}`;
+
+    // 👉 devolvemos SIEMPRE el usuario para que Login.jsx
+    // pueda leer el rol y redirigir
+    return user;
   };
 
-  // 🔹 Registro (solo crea el usuario; SIN correo de verificación todavía)
+  // 🔹 Registro (solo crea el usuario)
   const register = async (payload) => {
     /*
       payload esperado:
@@ -57,17 +78,8 @@ export function AuthProvider({ children }) {
         rolInternoDeseado,  // opcional
       }
     */
-
     const res = await api.post("/api/Auth/register", payload);
-
-    // 👉 AQUÍ es donde el otro desarrollador puede enganchar
-    // el envío de correo de verificación cuando exista
-    // el endpoint correspondiente en el backend
-    //
-    // Ejemplo futuro:
-    // await api.post("/api/Auth/enviar-confirmacion", { correo: payload.correo });
-
-    return res.data; // { mensaje, usuario }
+    return res.data; // { mensaje, usuario } (según tu backend)
   };
 
   const logout = () => {

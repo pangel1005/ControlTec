@@ -1,7 +1,7 @@
-// src/pages/Login.jsx
+// src/pages/auth/Login.jsx
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Login() {
   const [correo, setCorreo] = useState("");
@@ -21,19 +21,48 @@ export default function Login() {
     try {
       const user = await login(correo, password);
 
-      const rol = user?.roll ?? user?.Roll ?? user?.rol;
+      if (!user) {
+        throw new Error("No se recibió el usuario desde el backend.");
+      }
 
-      if (rol === "Solicitante") {
-        navigate("/mis-solicitudes");
-      } else if (rol === "VUS") {
-        navigate("/vus/solicitudes");
-      } else if (rol === "Admin") {
-        navigate("/admin");
-      } else {
-        navigate("/dashboard");
+      const rol = (
+        user.roll ??
+        user.Roll ??
+        user.rol ??
+        user.role ??
+        ""
+      ).trim();
+
+      console.log("Usuario logueado:", user);
+      console.log("Rol detectado:", rol);
+
+      switch (rol) {
+        case "Solicitante":
+          navigate("/mis-solicitudes", { replace: true });
+          break;
+        case "VUS":
+          navigate("/vus/solicitudes", { replace: true });
+          break;
+        case "TecnicoUPC":
+          navigate("/upc/solicitudes", { replace: true });
+          break;
+        case "EncargadoUPC":
+          navigate("/encargado-upc/solicitudes", { replace: true });
+          break;
+        case "DNCD":
+          navigate("/dncd/solicitudes", { replace: true });
+          break;  
+        case "Admin":
+          navigate("/admin", { replace: true });
+          break;
+        default:
+          setError(
+            `No se reconoce el rol (${rol || "vacío"}). Verifica la respuesta del backend.`
+          );
+          break;
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error en login:", err);
       setError("Correo o contraseña incorrectos o error en el servidor.");
     } finally {
       setLoading(false);
@@ -43,18 +72,14 @@ export default function Login() {
   return (
     <div className="login-page">
       <div className="login-card">
-        {/* Header */}
         <div className="login-header">
           <h1>Bienvenido</h1>
           <p>Inicia sesión en tu cuenta</p>
         </div>
 
-        {/* Mensaje de error */}
         {error && <div className="login-error-banner">{error}</div>}
 
-        {/* Formulario */}
         <form onSubmit={handleSubmit} className="login-form">
-          {/* Correo */}
           <div className="form-group">
             <label htmlFor="email">Correo electrónico</label>
             <input
@@ -67,7 +92,6 @@ export default function Login() {
             />
           </div>
 
-          {/* Contraseña */}
           <div className="form-group">
             <div className="form-label-row">
               <label htmlFor="password">Contraseña</label>
@@ -110,7 +134,6 @@ export default function Login() {
           </button>
         </form>
 
-        {/* Enlace a registro */}
         <p className="login-register-text">
           ¿No tienes cuenta?{" "}
           <span

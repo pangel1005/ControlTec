@@ -11,7 +11,24 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  const rol = usuario?.roll || usuario?.Roll;
+  // Normalizamos el rol igual que en ProtectedRoute
+  const rol = (
+    usuario?.roll ??
+    usuario?.Roll ??
+    usuario?.rol ??
+    usuario?.role ??
+    ""
+  ).trim();
+
+  const goHomeByRole = () => {
+    if (rol === "Admin") navigate("/admin");
+    else if (rol === "Solicitante") navigate("/mis-solicitudes");
+    else if (rol === "VUS") navigate("/vus/solicitudes");
+    else if (rol === "TecnicoUPC") navigate("/upc/solicitudes");
+    else if (rol === "EncargadoUPC") navigate("/encargado-upc/solicitudes");
+    else if (rol === "DNCD") navigate("/dncd/solicitudes");
+    else navigate("/login");
+  };
 
   return (
     <nav
@@ -19,16 +36,16 @@ export default function Navbar() {
         display: "flex",
         justifyContent: "space-between",
         padding: "0.75rem 1.5rem",
-        background: "#065f46", // verde
+        background: "#065f46",
         color: "#f9fafb",
+        alignItems: "center",
       }}
     >
-      {/* Logo / título */}
-      <div style={{ fontWeight: "700", cursor: "pointer" }} onClick={() => {
-        if (rol === "Admin") navigate("/admin");
-        else if (rol === "Solicitante") navigate("/mis-solicitudes");
-        else if (rol === "VUS") navigate("/vus/solicitudes");
-      }}>
+      {/* Logo / Inicio */}
+      <div
+        style={{ fontWeight: "700", cursor: "pointer", fontSize: "1.2rem" }}
+        onClick={goHomeByRole}
+      >
         ControlTec
       </div>
 
@@ -39,7 +56,6 @@ export default function Navbar() {
               {usuario.nombre} ({rol})
             </span>
 
-            {/* Menú según rol */}
             {rol === "Solicitante" && (
               <Link to="/mis-solicitudes" style={{ color: "#f9fafb" }}>
                 Mis solicitudes
@@ -49,6 +65,27 @@ export default function Navbar() {
             {rol === "VUS" && (
               <Link to="/vus/solicitudes" style={{ color: "#f9fafb" }}>
                 Bandeja VUS
+              </Link>
+            )}
+
+            {rol === "TecnicoUPC" && (
+              <Link to="/upc/solicitudes" style={{ color: "#f9fafb" }}>
+                Bandeja Técnico UPC
+              </Link>
+            )}
+
+            {rol === "EncargadoUPC" && (
+              <Link
+                to="/encargado-upc/solicitudes"
+                style={{ color: "#f9fafb" }}
+              >
+                Bandeja Encargado UPC
+              </Link>
+            )}
+
+            {rol === "DNCD" && (
+              <Link to="/dncd/solicitudes" style={{ color: "#f9fafb" }}>
+                Bandeja DNCD
               </Link>
             )}
 

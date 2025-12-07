@@ -1,4 +1,4 @@
-// src/pages/solicitudes/SolicitudDetalle.jsx
+// src/pages/solicitante/SolicitudDetalle.jsx
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/apiClient";
@@ -13,18 +13,18 @@ export default function SolicitudDetalle() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // Para reenvío (solicitante, futuro)
   const [reuploadFiles, setReuploadFiles] = useState([]);
-
-  // Comentario para VUS (aprobación/devolución)
   const [comentarioVus, setComentarioVus] = useState("");
+  const [comentarioUpc, setComentarioUpc] = useState("");
+  const [comentarioEncargado, setComentarioEncargado] = useState("");
 
   const rol = (usuario?.roll || usuario?.Roll || "").trim();
   const esVus = rol === "VUS";
   const esSolicitante = rol === "Solicitante";
+  const esTecnicoUPC = rol === "TecnicoUPC";
+  const esEncargadoUPC = rol === "EncargadoUPC";
 
   // =================== CARGA DE DETALLE ===================
-
   const cargarDetalle = async () => {
     setLoading(true);
     setError("");
@@ -46,7 +46,6 @@ export default function SolicitudDetalle() {
   }, [id]);
 
   // =================== HELPERS ===================
-
   const formatFecha = (fechaStr) => {
     if (!fechaStr) return "-";
     const d = new Date(fechaStr);
@@ -62,8 +61,8 @@ export default function SolicitudDetalle() {
 
   const getEstadoClass = (estado = "") => {
     const e = estado.toLowerCase();
-    if (e.includes("rechaz") || e.includes("devuelt"))
-      return "badge badge-danger";
+    if (e.includes("rechaz")) return "badge badge-danger";
+    if (e.includes("devuelt")) return "badge badge-warning";
     if (e.includes("aprob")) return "badge badge-success";
     return "badge badge-warning";
   };
@@ -73,8 +72,6 @@ export default function SolicitudDetalle() {
     const url = `${base}/api/Documentos/${docId}/descargar`;
     window.open(url, "_blank");
   };
-
-  // =================== REENVÍO (SOLICITANTE, FUTURO) ===================
 
   const handleReuploadChange = (e) => {
     const files = Array.from(e.target.files || []);
@@ -87,38 +84,37 @@ export default function SolicitudDetalle() {
       return;
     }
 
-    // Aquí en el futuro:
-    // 1) Subir nuevos documentos a /api/Solicitudes/{id}/documentos
-    // 2) Volver a enviar la solicitud con /api/Solicitudes/{id}/enviar
     alert(
       "Reenvío de documentos pendiente de implementar en el backend. Solo es una vista de ejemplo."
     );
   };
 
-  const esRechazada =
-    detalle?.estado?.toLowerCase().includes("rechaz") ||
-    detalle?.estado?.toLowerCase().includes("devuelt");
-
-  const esAprobada = detalle?.estado?.toLowerCase().includes("aprob");
+  // Estados lógicos
+  const estadoLower = (detalle?.estado || "").toLowerCase();
+  const esDevuelta = estadoLower.includes("devuelt");
+  const esRechazada = estadoLower.includes("rechaz");
+  const esAprobada = estadoLower.includes("aprob");
 
   // =================== ACCIONES VUS ===================
-
   const handleVusAprobar = async () => {
     if (!detalle) return;
 
     const confirmado = window.confirm(
-      '¿Confirmas que la solicitud tiene todos los documentos y debe pasar a "Revisión VUS"?'
+      '¿Confirmas que la solicitud tiene todos los documentos y debe pasar a "Validación Recepción" (Técnico UPC)?'
     );
     if (!confirmado) return;
 
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
-        estadoNuevo: "Revisión VUS", // usa el estado definido en el backend
-        comentario: comentarioVus,
+        estadoNuevo: "Validación Recepción",
+        comentario:
+          comentarioVus ||
+          "Documentación verificada por VUS. Pasa a Validación Recepción.",
       });
+
       setComentarioVus("");
       await cargarDetalle();
-      alert("Solicitud enviada a Revisión VUS.");
+      alert("Solicitud enviada a Validación Recepción (Técnico UPC).");
     } catch (err) {
       console.error("Error al cambiar estado como VUS:", err);
       alert(
@@ -136,28 +132,174 @@ export default function SolicitudDetalle() {
     }
 
     const confirmado = window.confirm(
-      "¿Confirmas que la solicitud será devuelta al solicitante (Rechazada)?"
+      "¿Confirmas que la solicitud será devuelta al solicitante?"
+    );
+    if (!confirmado) return;
+
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Devuelta",
+        comentario: comentarioVus,
+      });
+
+      setComentarioVus("");
+      await cargarDetalle();
+      alert("Solicitud devuelta al solicitante.");
+    } catch (err) {
+      console.error("Error al devolver como VUS:", err);
+      alert(
+        "No fue posible devolver la solicitud. Verifica que el backend permita esta transición para el rol VUS."
+      );
+    }
+  };
+
+  // =================== ACCIONES TÉCNICO UPC ===================
+  const handleUpcAprobar = async () => {
+    if (!detalle) return;
+
+    const confirmado = window.confirm(
+      '¿Confirmas que el expediente cumple con los requisitos y debe pasar a "Evaluación Técnica"?'
+    );
+    if (!confirmado) return;
+
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Evaluación Técnica",
+        comentario:
+          comentarioUpc ||
+          "Expediente revisado por Técnico UPC. Pasa a Evaluación Técnica.",
+      });
+
+      setComentarioUpc("");
+      await cargarDetalle();
+      alert("Solicitud enviada a Evaluación Técnica.");
+    } catch (err) {
+      console.error("Error al cambiar estado como Técnico UPC:", err);
+      alert(
+        "No fue posible actualizar el estado. Verifica que el backend permita esta transición para el rol Técnico UPC."
+      );
+    }
+  };
+
+  const handleUpcDevolver = async () => {
+    if (!detalle) return;
+
+    if (!comentarioUpc.trim()) {
+      alert("Debes indicar el motivo de la devolución.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Confirmas que la solicitud será devuelta al solicitante para subsanación?"
+    );
+    if (!confirmado) return;
+
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Devuelta",
+        comentario: comentarioUpc,
+      });
+
+      setComentarioUpc("");
+      await cargarDetalle();
+      alert("Solicitud devuelta al solicitante.");
+    } catch (err) {
+      console.error("Error al devolver como Técnico UPC:", err);
+      alert(
+        "No fue posible devolver la solicitud. Verifica que el backend permita esta transición para el rol Técnico UPC."
+      );
+    }
+  };
+
+  const handleUpcRechazar = async () => {
+    if (!detalle) return;
+
+    if (!comentarioUpc.trim()) {
+      alert("Debes indicar el motivo del rechazo.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Confirmas que la solicitud será rechazada definitivamente?"
     );
     if (!confirmado) return;
 
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Rechazada",
-        comentario: comentarioVus,
+        comentario: comentarioUpc,
       });
-      setComentarioVus("");
+
+      setComentarioUpc("");
       await cargarDetalle();
-      alert("Solicitud rechazada y comentario registrado.");
+      alert("Solicitud rechazada.");
     } catch (err) {
-      console.error("Error al rechazar como VUS:", err);
+      console.error("Error al rechazar como Técnico UPC:", err);
       alert(
-        "No fue posible rechazar la solicitud. Verifica que el backend permita esta transición para el rol VUS."
+        "No fue posible rechazar la solicitud. Verifica que el backend permita esta transición para el rol Técnico UPC."
+      );
+    }
+  };
+
+  // =================== ACCIONES ENCARGADO UPC ===================
+  const handleEncargadoRemitirDncd = async () => {
+    if (!detalle) return;
+
+    const confirmado = window.confirm(
+      '¿Confirmas que deseas remitir esta solicitud a DNCD (estado "Aprobación DIGEAMPS")?'
+    );
+    if (!confirmado) return;
+
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Aprobación DIGEAMPS",
+        comentario:
+          comentarioEncargado ||
+          "Revisión técnica completada por Encargado UPC. Se remite a DNCD (DIGEAMPS).",
+      });
+
+      setComentarioEncargado("");
+      await cargarDetalle();
+      alert("Solicitud remitida a DNCD (Aprobación DIGEAMPS).");
+    } catch (err) {
+      console.error("Error al remitir desde Encargado UPC:", err);
+      alert(
+        "No fue posible remitir la solicitud. Verifica que el backend permita esta transición para el rol EncargadoUPC."
+      );
+    }
+  };
+
+  const handleEncargadoDevolverTecnico = async () => {
+    if (!detalle) return;
+
+    if (!comentarioEncargado.trim()) {
+      alert("Debes indicar el motivo de la devolución al Técnico UPC.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      '¿Confirmas que deseas devolver la solicitud al Técnico UPC (estado "Validación Recepción")?'
+    );
+    if (!confirmado) return;
+
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Validación Recepción",
+        comentario: comentarioEncargado,
+      });
+
+      setComentarioEncargado("");
+      await cargarDetalle();
+      alert("Solicitud devuelta al Técnico UPC para nueva revisión.");
+    } catch (err) {
+      console.error("Error al devolver al Técnico desde Encargado UPC:", err);
+      alert(
+        "No fue posible devolver la solicitud al Técnico UPC. Verifica que el backend permita esta transición para el rol EncargadoUPC."
       );
     }
   };
 
   // =================== RENDER ===================
-
   if (loading) {
     return (
       <div className="page-container">
@@ -175,7 +317,7 @@ export default function SolicitudDetalle() {
         <button
           type="button"
           className="btn-secondary"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate("/login")}
         >
           Volver
         </button>
@@ -187,9 +329,11 @@ export default function SolicitudDetalle() {
   const documentosRequeridos = detalle.documentosRequeridos || [];
   const historial = detalle.historial || [];
 
-  let backPath = "/dashboard";
+  let backPath = "/login";
   if (esSolicitante) backPath = "/mis-solicitudes";
   else if (esVus) backPath = "/vus/solicitudes";
+  else if (esTecnicoUPC) backPath = "/upc/solicitudes";
+  else if (esEncargadoUPC) backPath = "/encargado-upc/solicitudes";
 
   return (
     <div className="page-container detalle-page">
@@ -310,15 +454,15 @@ export default function SolicitudDetalle() {
             )}
           </section>
 
-          {/* Panel especial para VUS */}
+          {/* Panel VUS */}
           {esVus && (
             <section className="detalle-section detalle-full-width">
               <h2 className="detalle-section-title">Revisión VUS</h2>
               <p>
                 Verifica que todos los documentos requeridos estén cargados. Si
                 están completos, pasa la solicitud a{" "}
-                <strong>Revisión VUS</strong>. Si faltan documentos, devuélvela
-                al solicitante indicando el motivo.
+                <strong>Validación Recepción</strong>. Si faltan documentos,
+                devuélvela al solicitante indicando el motivo.
               </p>
 
               <textarea
@@ -334,12 +478,12 @@ export default function SolicitudDetalle() {
                   className="btn-primary"
                   onClick={handleVusAprobar}
                 >
-                  Documentos completos (pasar a Revisión VUS)
+                  Documentos completos (pasar a Validación Recepción)
                 </button>
 
                 <button
                   type="button"
-                  className="btn-danger"
+                  className="btn-warning"
                   onClick={handleVusRechazar}
                 >
                   Devolver al solicitante
@@ -348,7 +492,91 @@ export default function SolicitudDetalle() {
             </section>
           )}
 
-          {/* Acciones del solicitante (reenvío / descarga) */}
+          {/* Panel Técnico UPC */}
+          {esTecnicoUPC && (
+            <section className="detalle-section detalle-full-width">
+              <h2 className="detalle-section-title">Revisión Técnico UPC</h2>
+              <p>
+                Revisa el expediente en{" "}
+                <strong>Validación Recepción</strong>. Si cumple, pásalo a{" "}
+                <strong>Evaluación Técnica</strong>. Si no, devuelve o rechaza
+                indicando el motivo.
+              </p>
+
+              <textarea
+                className="detalle-textarea"
+                placeholder="Comentario para el solicitante o para el flujo (observaciones, motivo de devolución/rechazo)..."
+                value={comentarioUpc}
+                onChange={(e) => setComentarioUpc(e.target.value)}
+              />
+
+              <div className="detalle-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleUpcAprobar}
+                >
+                  Pasar a Evaluación Técnica
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-warning"
+                  onClick={handleUpcDevolver}
+                >
+                  Devolver al solicitante
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-danger"
+                  onClick={handleUpcRechazar}
+                >
+                  Rechazar solicitud
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* Panel Encargado UPC */}
+          {esEncargadoUPC && (
+            <section className="detalle-section detalle-full-width">
+              <h2 className="detalle-section-title">Revisión Encargado UPC</h2>
+              <p>
+                Revisa el expediente en <strong>Evaluación Técnica</strong>.
+                Si todo está conforme, remítelo a{" "}
+                <strong>DNCD (Aprobación DIGEAMPS)</strong>. Si necesitas que el
+                Técnico UPC corrija algo, devuélvelo indicando el motivo.
+              </p>
+
+              <textarea
+                className="detalle-textarea"
+                placeholder="Comentario para DNCD o para el Técnico UPC (motivo de devolución, observaciones técnicas, etc.)..."
+                value={comentarioEncargado}
+                onChange={(e) => setComentarioEncargado(e.target.value)}
+              />
+
+              <div className="detalle-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleEncargadoRemitirDncd}
+                >
+                  Remitir a DNCD (Aprobación DIGEAMPS)
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-warning"
+                  onClick={handleEncargadoDevolverTecnico}
+                >
+                  Devolver al Técnico UPC
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* Acciones del solicitante */}
           {esSolicitante && (
             <section className="detalle-section detalle-full-width">
               <h2 className="detalle-section-title">Acciones</h2>
@@ -364,11 +592,12 @@ export default function SolicitudDetalle() {
                 </button>
               )}
 
-              {esRechazada && (
+              {/* SOLO permitir subir archivos cuando está DEVUELTA, no RECHAZADA */}
+              {esDevuelta && (
                 <div className="detalle-reupload">
                   <p className="detalle-muted">
-                    La solicitud fue rechazada o devuelta. Puedes adjuntar
-                    nuevos documentos para corregirla.
+                    La solicitud fue devuelta. Puedes adjuntar nuevos documentos
+                    para corregirla y reenviarla.
                   </p>
                   <input
                     type="file"
@@ -392,7 +621,14 @@ export default function SolicitudDetalle() {
                 </div>
               )}
 
-              {!esAprobada && !esRechazada && (
+              {esRechazada && (
+                <p className="detalle-muted">
+                  La solicitud fue rechazada de forma definitiva. No es posible
+                  adjuntar nuevos documentos para esta solicitud.
+                </p>
+              )}
+
+              {!esAprobada && !esDevuelta && !esRechazada && (
                 <p className="detalle-muted">
                   No hay acciones adicionales disponibles para el estado actual.
                 </p>
