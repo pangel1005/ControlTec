@@ -5,7 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
-using QuestPDF.Infrastructure;  
+using QuestPDF.Infrastructure;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -54,8 +54,8 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Licencia QuestPDF
 QuestPDF.Settings.License = LicenseType.Community;
-
 
 // 5. SWAGGER + JWT
 builder.Services.AddEndpointsApiExplorer();
@@ -85,12 +85,13 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// 6. INYECCIÓN DE DEPENDENCIAS DE SERVICIOS
 builder.Services.AddScoped<ICertificadoService, CertificadoService>();
-
+builder.Services.AddScoped<IComunicacionRechazoService, ComunicacionRechazoService>();
 
 var app = builder.Build();
 
-// 6. MIDDLEWARE
+// 7. MIDDLEWARE
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
