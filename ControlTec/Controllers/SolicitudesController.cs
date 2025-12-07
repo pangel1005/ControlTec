@@ -24,15 +24,18 @@ namespace ControlTec.Controllers
         private readonly AppDbContext _context;
         private readonly IWebHostEnvironment _env;
         private readonly ICertificadoService _certificadoService;
+        private readonly IComunicacionRechazoService _rechazoService;
 
         public SolicitudesController(
             AppDbContext context,
             IWebHostEnvironment env,
-            ICertificadoService certificadoService)
+            ICertificadoService certificadoService,
+            IComunicacionRechazoService rechazoService)
         {
             _context = context;
             _env = env;
             _certificadoService = certificadoService;
+            _rechazoService = rechazoService;
         }
 
         // ==============================
@@ -65,8 +68,9 @@ namespace ControlTec.Controllers
             public const string AprobacionDNCD = "Aprobación DNCD";
             public const string EnRevisionVUS = "En Revisión VUS";
             public const string Devuelta = "Devuelta";
+            public const string RechazadaET = "RechazadaET";      // Rechazo en evaluación técnica (interno)
             public const string Aprobada = "Aprobada";
-            public const string Rechazada = "Rechazada";
+            public const string Rechazada = "Rechazada";          // Rechazo final (visible al usuario)
             public const string Entregada = "Entregada";
         }
 
@@ -78,9 +82,9 @@ namespace ControlTec.Controllers
             // Ventanilla Única de Servicios
             { "VUS", new[]
                 {
-                    EstadosSolicitud.Depositada,     // cuando el usuario la envía
-                    EstadosSolicitud.Devuelta,       // cuando vuelve corregida
-                    EstadosSolicitud.AprobacionDNCD  // cuando DNCD la devuelve aprobada
+                    EstadosSolicitud.Depositada,   // cuando el usuario la envía
+                    EstadosSolicitud.Devuelta      // cuando vuelve corregida
+                    // NO ve ni RechazadaET ni Rechazada
                 }
             },
 
@@ -108,7 +112,10 @@ namespace ControlTec.Controllers
             // Dirección
             { "Direccion", new[]
                 {
-                    EstadosSolicitud.EnRevisionVUS
+                    // Solicitudes aprobadas por DNCD (para emitir certificado)
+                    EstadosSolicitud.AprobacionDNCD,
+                    // Rechazos internos de Evaluación Técnica (para comunicación de rechazo)
+                    EstadosSolicitud.RechazadaET
                 }
             }
         };
@@ -217,7 +224,6 @@ namespace ControlTec.Controllers
             }
             else
             {
-                // si el rol no está mapeado, no dejamos usar este endpoint
                 return Forbid();
             }
 
@@ -364,7 +370,7 @@ namespace ControlTec.Controllers
         // 5. DETALLE SOLICITUD
         // ======================================
         [HttpGet("{id}/detalle")]
-        [Authorize(Roles = "Usuario,Solicitante,Admin, VUS, TecnicoUPC, EncargadoUPC, DNCD, Direccion")]
+        [Authorize(Roles = "Usuario,Solicitante,Admin,VUS,TecnicoUPC,EncargadoUPC,DNCD,Direccion")]
         public async Task<ActionResult<object>> GetDetalle(int id)
         {
             var solicitud = await _context.Solicitudes
@@ -552,7 +558,7 @@ namespace ControlTec.Controllers
 
             var transiciones = new List<TransicionRol>
             {
-                // VUS
+                // VUS (primera etapa)
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.ValidacionRecepcion },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta,  Hacia = EstadosSolicitud.ValidacionRecepcion },
@@ -562,31 +568,30 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Rechazada },
 
-                // Encargado UPC (DIGEAMPS)
+                // Encargado UPC (DIGEAMPS) – RF-2.3
+                // Aprobado → Aprobación DIGEAMPS
                 new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.AprobacionDIGEAMPS },
+                // NO aprobado → devuelve al usuario
                 new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.Devuelta },
-                new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.Rechazada },
+                // Rechazo → queda en RechazadaET para que Dirección genere la comunicación
+                new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.RechazadaET },
 
                 // DNCD
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.AprobacionDNCD },
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Devuelta },
+                // Rechazo directo desde DNCD → Rechazada final
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Rechazada },
 
-                // VUS segunda vez
-                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.EnRevisionVUS },
-                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
-                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
+                // Dirección – recibe directamente desde DNCD para aprobación
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Aprobada },
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
 
-                // Dirección
-                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Aprobada },
-                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Devuelta },
-                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Rechazada },
-
-                // Admin
-                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Aprobada },
-                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Devuelta },
-                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.EnRevisionVUS, Hacia = EstadosSolicitud.Rechazada },
-                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.Aprobada, Hacia = EstadosSolicitud.Entregada },
+                // Admin – lo mismo que Dirección + Entregada
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Aprobada },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.Aprobada,        Hacia = EstadosSolicitud.Entregada },
             };
 
             bool esAdmin = string.Equals(rolUsuario, "Admin", StringComparison.OrdinalIgnoreCase);
@@ -617,7 +622,8 @@ namespace ControlTec.Controllers
 
             var comentario = dto.Comentario;
             if ((string.Equals(estadoNuevo, EstadosSolicitud.Rechazada, StringComparison.OrdinalIgnoreCase) ||
-                 string.Equals(estadoNuevo, EstadosSolicitud.Devuelta, StringComparison.OrdinalIgnoreCase)) &&
+                 string.Equals(estadoNuevo, EstadosSolicitud.Devuelta, StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(estadoNuevo, EstadosSolicitud.RechazadaET, StringComparison.OrdinalIgnoreCase)) &&
                 string.IsNullOrWhiteSpace(comentario))
             {
                 comentario = $"Solicitud {estadoNuevo} por el rol {rolUsuario}.";
@@ -822,6 +828,69 @@ namespace ControlTec.Controllers
                 solicitud.Id,
                 solicitud.Estado,
                 RutaCertificado = ruta
+            });
+        }
+
+        // ======================================
+        // 11. GENERAR COMUNICACIÓN DE RECHAZO (Dirección / Admin)
+        //      Requisito RF-2.3: cuando la evaluación técnica resulta NO Aprobada
+        // ======================================
+        [HttpPost("{id}/comunicacion-rechazo")]
+        [Authorize(Roles = "Direccion,Admin")]
+        public async Task<ActionResult<object>> GenerarComunicacionRechazo(int id)
+        {
+            var solicitud = await _context.Solicitudes
+                .Include(s => s.Usuario)
+                .Include(s => s.Servicio)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (solicitud == null)
+                return NotFound("Solicitud no encontrada.");
+
+            // Solo se permite generar la comunicación cuando está en RechazadaET
+            if (!string.Equals(solicitud.Estado, EstadosSolicitud.RechazadaET, StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Solo se puede generar la comunicación de rechazo para solicitudes en estado RechazadaET.");
+
+            var usuarioId = GetUserIdFromToken();
+            var usuario = await _context.Usuarios.FindAsync(usuarioId);
+            if (usuario == null)
+                return BadRequest("El usuario que genera la comunicación no existe.");
+
+            // Generar el PDF de comunicación de rechazo
+            var ruta = await _rechazoService.GenerarComunicacionRechazoAsync(id);
+
+            // Pasar de RechazadaET -> Rechazada (estado final visible al usuario)
+            var estadoAnterior = solicitud.Estado;
+            solicitud.Estado = EstadosSolicitud.Rechazada;
+
+            var comentario = $"Comunicación de rechazo generada por {usuario.Roll}.";
+
+            var nuevoHistorial = new HistorialEstado
+            {
+                SolicitudId = solicitud.Id,
+                EstadoAnterior = estadoAnterior,
+                EstadoNuevo = solicitud.Estado,
+                Comentario = comentario,
+                UsuarioId = usuarioId,
+                FechaCambio = DateTime.Now
+            };
+
+            _context.HistorialEstados.Add(nuevoHistorial);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                solicitud.Id,
+                solicitud.Estado,
+                RutaComunicacionRechazo = ruta,
+                Historial = new
+                {
+                    nuevoHistorial.Id,
+                    nuevoHistorial.EstadoAnterior,
+                    nuevoHistorial.EstadoNuevo,
+                    nuevoHistorial.Comentario,
+                    nuevoHistorial.FechaCambio
+                }
             });
         }
     }
