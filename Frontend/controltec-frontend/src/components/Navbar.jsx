@@ -11,7 +11,7 @@ export default function Navbar() {
     navigate("/login");
   };
 
-  // Normalizamos el rol igual que en ProtectedRoute
+  // Normalizamos el rol para evitar problemas con Roll / roll / role
   const rol = (
     usuario?.roll ??
     usuario?.Roll ??
@@ -20,6 +20,7 @@ export default function Navbar() {
     ""
   ).trim();
 
+  // Redirección según rol al hacer clic en el logo
   const goHomeByRole = () => {
     if (rol === "Admin") navigate("/admin");
     else if (rol === "Solicitante") navigate("/mis-solicitudes");
@@ -27,6 +28,7 @@ export default function Navbar() {
     else if (rol === "TecnicoUPC") navigate("/upc/solicitudes");
     else if (rol === "EncargadoUPC") navigate("/encargado-upc/solicitudes");
     else if (rol === "DNCD") navigate("/dncd/solicitudes");
+    else if (rol === "Direccion") navigate("/direccion/solicitudes");
     else navigate("/login");
   };
 
@@ -41,7 +43,7 @@ export default function Navbar() {
         alignItems: "center",
       }}
     >
-      {/* Logo / Inicio */}
+      {/* Logo / Home */}
       <div
         style={{ fontWeight: "700", cursor: "pointer", fontSize: "1.2rem" }}
         onClick={goHomeByRole}
@@ -56,39 +58,49 @@ export default function Navbar() {
               {usuario.nombre} ({rol})
             </span>
 
+            {/* Solicitante */}
             {rol === "Solicitante" && (
               <Link to="/mis-solicitudes" style={{ color: "#f9fafb" }}>
                 Mis solicitudes
               </Link>
             )}
 
+            {/* VUS */}
             {rol === "VUS" && (
               <Link to="/vus/solicitudes" style={{ color: "#f9fafb" }}>
                 Bandeja VUS
               </Link>
             )}
 
+            {/* Técnico UPC */}
             {rol === "TecnicoUPC" && (
               <Link to="/upc/solicitudes" style={{ color: "#f9fafb" }}>
                 Bandeja Técnico UPC
               </Link>
             )}
 
+            {/* Encargado UPC */}
             {rol === "EncargadoUPC" && (
-              <Link
-                to="/encargado-upc/solicitudes"
-                style={{ color: "#f9fafb" }}
-              >
+              <Link to="/encargado-upc/solicitudes" style={{ color: "#f9fafb" }}>
                 Bandeja Encargado UPC
               </Link>
             )}
 
+            {/* DNCD */}
             {rol === "DNCD" && (
               <Link to="/dncd/solicitudes" style={{ color: "#f9fafb" }}>
                 Bandeja DNCD
               </Link>
             )}
 
+            {/* Dirección */}
+            {rol === "Direccion" && (
+              <Link to="/direccion/solicitudes" style={{ color: "#f9fafb" }}>
+                Bandeja Dirección
+              </Link>
+            )}
+
+            {/* Admin */}
             {rol === "Admin" && (
               <>
                 <Link to="/admin" style={{ color: "#f9fafb" }}>
@@ -103,6 +115,7 @@ export default function Navbar() {
               </>
             )}
 
+            {/* Logout */}
             <button
               onClick={handleLogout}
               style={{

@@ -25,6 +25,7 @@ export default function Login() {
         throw new Error("No se recibió el usuario desde el backend.");
       }
 
+      // Normalizamos el rol
       const rol = (
         user.roll ??
         user.Roll ??
@@ -51,7 +52,11 @@ export default function Login() {
           break;
         case "DNCD":
           navigate("/dncd/solicitudes", { replace: true });
-          break;  
+          break;
+        case "Direccion":
+          // 👉 Ajusta esta ruta al dashboard que vayas a usar para Dirección
+          navigate("/direccion/solicitudes", { replace: true });
+          break;
         case "Admin":
           navigate("/admin", { replace: true });
           break;

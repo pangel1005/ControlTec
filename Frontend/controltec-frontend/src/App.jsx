@@ -37,6 +37,7 @@ import VusDashboard from "./pages/vus/VusDashboard.jsx";
 
 import { AuthProvider } from "./context/AuthContext";
 import ProtectedRoute from "./components/ProtectedRoute";
+import DireccionDashboard from "./pages/direccion/DireccionDashboard.jsx";
 
 import "./styles/global.css";
 import "./styles/layout.css";
@@ -149,13 +150,21 @@ function AppInner() {
               </ProtectedRoute>
             }
           />
-
+          <Route
+            path="/direccion/solicitudes"
+            element={
+              <ProtectedRoute roles={["Direccion", "Admin"]}>
+                <DireccionDashboard />
+              </ProtectedRoute>
+            }
+/>
           {/* Redirecciones */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
     </>
+    
   );
 }
 

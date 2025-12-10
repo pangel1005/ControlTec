@@ -586,6 +586,7 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Aprobada },
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
+                new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.RechazadaET, Hacia = EstadosSolicitud.Rechazada},
 
                 // Admin – lo mismo que Dirección + Entregada
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Aprobada },

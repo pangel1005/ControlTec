@@ -13,16 +13,25 @@ export default function SolicitudDetalle() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Archivos reenvío solicitante
   const [reuploadFiles, setReuploadFiles] = useState([]);
+
+  // Comentarios por rol
   const [comentarioVus, setComentarioVus] = useState("");
   const [comentarioUpc, setComentarioUpc] = useState("");
   const [comentarioEncargado, setComentarioEncargado] = useState("");
+  const [comentarioDncd, setComentarioDncd] = useState("");
+
+  // Bloqueo de acciones (después de cambiar estado)
+  const [accionesBloqueadas, setAccionesBloqueadas] = useState(false);
 
   const rol = (usuario?.roll || usuario?.Roll || "").trim();
   const esVus = rol === "VUS";
   const esSolicitante = rol === "Solicitante";
   const esTecnicoUPC = rol === "TecnicoUPC";
   const esEncargadoUPC = rol === "EncargadoUPC";
+  const esDNCD = rol === "DNCD";
+  const esDireccion = rol === "Direccion";
 
   // =================== CARGA DE DETALLE ===================
   const cargarDetalle = async () => {
@@ -94,32 +103,38 @@ export default function SolicitudDetalle() {
   const esDevuelta = estadoLower.includes("devuelt");
   const esRechazada = estadoLower.includes("rechaz");
   const esAprobada = estadoLower.includes("aprob");
+  const esEstadoAprobacionDNCD =
+    estadoLower.includes("aprobación dncd") ||
+    estadoLower.includes("aprobacion dncd");
+  const tieneCertificado = !!detalle?.rutaCertificado;
 
   // =================== ACCIONES VUS ===================
   const handleVusAprobar = async () => {
     if (!detalle) return;
 
     const confirmado = window.confirm(
-      '¿Confirmas que la solicitud tiene todos los documentos y debe pasar a "Validación Recepción" (Técnico UPC)?'
+      "¿Confirmas que la solicitud tiene todos los documentos y puede pasar a la siguiente revisión?"
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Validación Recepción",
         comentario:
           comentarioVus ||
-          "Documentación verificada por VUS. Pasa a Validación Recepción.",
+          "Documentación verificada por VUS. Se remite a la siguiente revisión.",
       });
 
       setComentarioVus("");
       await cargarDetalle();
-      alert("Solicitud enviada a Validación Recepción (Técnico UPC).");
+      alert("Solicitud enviada a la siguiente revisión.");
     } catch (err) {
       console.error("Error al cambiar estado como VUS:", err);
       alert(
         "No fue posible actualizar el estado. Verifica que el backend permita esta transición para el rol VUS."
       );
+      setAccionesBloqueadas(false);
     }
   };
 
@@ -136,6 +151,7 @@ export default function SolicitudDetalle() {
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Devuelta",
@@ -144,12 +160,13 @@ export default function SolicitudDetalle() {
 
       setComentarioVus("");
       await cargarDetalle();
-      alert("Solicitud devuelta al solicitante.");
+      alert("Solicitud devuelta al solicitante para corrección.");
     } catch (err) {
       console.error("Error al devolver como VUS:", err);
       alert(
         "No fue posible devolver la solicitud. Verifica que el backend permita esta transición para el rol VUS."
       );
+      setAccionesBloqueadas(false);
     }
   };
 
@@ -158,26 +175,28 @@ export default function SolicitudDetalle() {
     if (!detalle) return;
 
     const confirmado = window.confirm(
-      '¿Confirmas que el expediente cumple con los requisitos y debe pasar a "Evaluación Técnica"?'
+      "¿Confirmas que el expediente cumple con los requisitos y puede pasar a evaluación técnica detallada?"
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Evaluación Técnica",
         comentario:
           comentarioUpc ||
-          "Expediente revisado por Técnico UPC. Pasa a Evaluación Técnica.",
+          "Expediente revisado por Técnico UPC. Pasa a evaluación técnica.",
       });
 
       setComentarioUpc("");
       await cargarDetalle();
-      alert("Solicitud enviada a Evaluación Técnica.");
+      alert("Solicitud enviada a evaluación técnica.");
     } catch (err) {
       console.error("Error al cambiar estado como Técnico UPC:", err);
       alert(
         "No fue posible actualizar el estado. Verifica que el backend permita esta transición para el rol Técnico UPC."
       );
+      setAccionesBloqueadas(false);
     }
   };
 
@@ -194,6 +213,7 @@ export default function SolicitudDetalle() {
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Devuelta",
@@ -202,12 +222,13 @@ export default function SolicitudDetalle() {
 
       setComentarioUpc("");
       await cargarDetalle();
-      alert("Solicitud devuelta al solicitante.");
+      alert("Solicitud devuelta al solicitante para corrección.");
     } catch (err) {
       console.error("Error al devolver como Técnico UPC:", err);
       alert(
         "No fue posible devolver la solicitud. Verifica que el backend permita esta transición para el rol Técnico UPC."
       );
+      setAccionesBloqueadas(false);
     }
   };
 
@@ -224,9 +245,10 @@ export default function SolicitudDetalle() {
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
-        estadoNuevo: "Rechazada",
+        estadoNuevo: "RechazarET",
         comentario: comentarioUpc,
       });
 
@@ -238,6 +260,7 @@ export default function SolicitudDetalle() {
       alert(
         "No fue posible rechazar la solicitud. Verifica que el backend permita esta transición para el rol Técnico UPC."
       );
+      setAccionesBloqueadas(false);
     }
   };
 
@@ -246,26 +269,28 @@ export default function SolicitudDetalle() {
     if (!detalle) return;
 
     const confirmado = window.confirm(
-      '¿Confirmas que deseas remitir esta solicitud a DNCD (estado "Aprobación DIGEAMPS")?'
+      "¿Confirmas que deseas remitir esta solicitud a la DNCD para su revisión?"
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Aprobación DIGEAMPS",
         comentario:
           comentarioEncargado ||
-          "Revisión técnica completada por Encargado UPC. Se remite a DNCD (DIGEAMPS).",
+          "Revisión técnica completada por Encargado UPC. Se remite a DNCD.",
       });
 
       setComentarioEncargado("");
       await cargarDetalle();
-      alert("Solicitud remitida a DNCD (Aprobación DIGEAMPS).");
+      alert("Solicitud remitida a la DNCD.");
     } catch (err) {
       console.error("Error al remitir desde Encargado UPC:", err);
       alert(
         "No fue posible remitir la solicitud. Verifica que el backend permita esta transición para el rol EncargadoUPC."
       );
+      setAccionesBloqueadas(false);
     }
   };
 
@@ -278,10 +303,11 @@ export default function SolicitudDetalle() {
     }
 
     const confirmado = window.confirm(
-      '¿Confirmas que deseas devolver la solicitud al Técnico UPC (estado "Validación Recepción")?'
+      "¿Confirmas que deseas devolver la solicitud al Técnico UPC para ajustes?"
     );
     if (!confirmado) return;
 
+    setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Validación Recepción",
@@ -296,7 +322,142 @@ export default function SolicitudDetalle() {
       alert(
         "No fue posible devolver la solicitud al Técnico UPC. Verifica que el backend permita esta transición para el rol EncargadoUPC."
       );
+      setAccionesBloqueadas(false);
     }
+  };
+
+  // =================== ACCIONES DNCD ===================
+  const handleDncdAprobar = async () => {
+    if (!detalle) return;
+
+    const confirmado = window.confirm(
+      "¿Confirmas que deseas aprobar y firmar esta solicitud en la DNCD?"
+    );
+    if (!confirmado) return;
+
+    setAccionesBloqueadas(true);
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Aprobación DNCD",
+        comentario:
+          comentarioDncd ||
+          "Solicitud aprobada por DNCD. Se remite a la Dirección para decisión final.",
+      });
+
+      setComentarioDncd("");
+      await cargarDetalle();
+      alert("Solicitud aprobada por DNCD.");
+    } catch (err) {
+      console.error("Error al aprobar como DNCD:", err);
+      alert(
+        "No fue posible aprobar la solicitud. Verifica que el backend permita esta transición para el rol DNCD."
+      );
+      setAccionesBloqueadas(false);
+    }
+  };
+
+  const handleDncdDevolver = async () => {
+    if (!detalle) return;
+
+    if (!comentarioDncd.trim()) {
+      alert("Debes indicar el motivo de la devolución.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Confirmas que deseas devolver la solicitud para corrección?"
+    );
+    if (!confirmado) return;
+
+    setAccionesBloqueadas(true);
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Devuelta",
+        comentario: comentarioDncd,
+      });
+
+      setComentarioDncd("");
+      await cargarDetalle();
+      alert(
+        "Solicitud devuelta para corrección. Volverá al flujo inicial para ser revisada."
+      );
+    } catch (err) {
+      console.error("Error al devolver como DNCD:", err);
+      alert(
+        "No fue posible devolver la solicitud. Verifica que el backend permita esta transición para el rol DNCD."
+      );
+      setAccionesBloqueadas(false);
+    }
+  };
+
+  const handleDncdRechazar = async () => {
+    if (!detalle) return;
+
+    if (!comentarioDncd.trim()) {
+      alert("Debes indicar el motivo del rechazo.");
+      return;
+    }
+
+    const confirmado = window.confirm(
+      "¿Confirmas que deseas rechazar definitivamente la solicitud desde DNCD?"
+    );
+    if (!confirmado) return;
+
+    setAccionesBloqueadas(true);
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Rechazada",
+        comentario: comentarioDncd,
+      });
+
+      setComentarioDncd("");
+      await cargarDetalle();
+      alert("Solicitud rechazada definitivamente por DNCD.");
+    } catch (err) {
+      console.error("Error al rechazar como DNCD:", err);
+      alert(
+        "No fue posible rechazar la solicitud. Verifica que el backend permita esta transición para el rol DNCD."
+      );
+      setAccionesBloqueadas(false);
+    }
+  };
+
+  // =================== ACCIONES DIRECCIÓN (simple) ===================
+  const handleDireccionAprobar = async () => {
+    if (!detalle) return;
+
+    const confirmado = window.confirm(
+      "¿Confirmas que deseas aprobar y firmar esta solicitud de forma definitiva?"
+    );
+    if (!confirmado) return;
+
+    setAccionesBloqueadas(true);
+    try {
+      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+        estadoNuevo: "Aprobada",
+        comentario: "Solicitud aprobada y firmada por Dirección.",
+      });
+
+      await cargarDetalle();
+      alert(
+        "Solicitud aprobada y firmada por Dirección. Luego podrás generar o ver el certificado."
+      );
+    } catch (err) {
+      console.error("Error al aprobar como Dirección:", err);
+      alert(
+        "No fue posible aprobar la solicitud. Verifica que el backend permita esta transición para el rol Dirección."
+      );
+      setAccionesBloqueadas(false);
+    }
+  };
+
+  const handleVerCertificado = () => {
+    if (!detalle?.rutaCertificado) {
+      alert("Aún no se ha generado el certificado para esta solicitud.");
+      return;
+    }
+    const base = api.defaults.baseURL || "";
+    window.open(`${base}${detalle.rutaCertificado}`, "_blank");
   };
 
   // =================== RENDER ===================
@@ -334,6 +495,8 @@ export default function SolicitudDetalle() {
   else if (esVus) backPath = "/vus/solicitudes";
   else if (esTecnicoUPC) backPath = "/upc/solicitudes";
   else if (esEncargadoUPC) backPath = "/encargado-upc/solicitudes";
+  else if (esDNCD) backPath = "/dncd/solicitudes";
+  else if (esDireccion) backPath = "/direccion/solicitudes";
 
   return (
     <div className="page-container detalle-page">
@@ -375,8 +538,7 @@ export default function SolicitudDetalle() {
               <strong>Descripción del servicio:</strong>
             </p>
             <p className="detalle-servicio-descripcion">
-              {detalle.servicio?.descripcion ??
-                "Este servicio no tiene descripción registrada."}
+              {detalle.servicio?.descripcion ?? "Este servicio no tiene descripción registrada."}
             </p>
           </section>
 
@@ -460,9 +622,9 @@ export default function SolicitudDetalle() {
               <h2 className="detalle-section-title">Revisión VUS</h2>
               <p>
                 Verifica que todos los documentos requeridos estén cargados. Si
-                están completos, pasa la solicitud a{" "}
-                <strong>Validación Recepción</strong>. Si faltan documentos,
-                devuélvela al solicitante indicando el motivo.
+                están completos, puedes enviar la solicitud a la siguiente
+                revisión. Si faltan documentos, devuélvela al solicitante
+                indicando el motivo.
               </p>
 
               <textarea
@@ -477,16 +639,18 @@ export default function SolicitudDetalle() {
                   type="button"
                   className="btn-primary"
                   onClick={handleVusAprobar}
+                  disabled={accionesBloqueadas}
                 >
-                  Documentos completos (pasar a Validación Recepción)
+                  Confirmar revisión y enviar
                 </button>
 
                 <button
                   type="button"
                   className="btn-warning"
                   onClick={handleVusRechazar}
+                  disabled={accionesBloqueadas}
                 >
-                  Devolver al solicitante
+                  Devolver al solicitante para corrección
                 </button>
               </div>
             </section>
@@ -497,10 +661,9 @@ export default function SolicitudDetalle() {
             <section className="detalle-section detalle-full-width">
               <h2 className="detalle-section-title">Revisión Técnico UPC</h2>
               <p>
-                Revisa el expediente en{" "}
-                <strong>Validación Recepción</strong>. Si cumple, pásalo a{" "}
-                <strong>Evaluación Técnica</strong>. Si no, devuelve o rechaza
-                indicando el motivo.
+                Revisa el expediente recibido. Si cumple con los requisitos,
+                envíalo a evaluación técnica detallada. Si hay observaciones,
+                puedes devolverlo al solicitante o rechazarlo.
               </p>
 
               <textarea
@@ -515,22 +678,25 @@ export default function SolicitudDetalle() {
                   type="button"
                   className="btn-primary"
                   onClick={handleUpcAprobar}
+                  disabled={accionesBloqueadas}
                 >
-                  Pasar a Evaluación Técnica
+                  Enviar a evaluación técnica
                 </button>
 
                 <button
                   type="button"
                   className="btn-warning"
                   onClick={handleUpcDevolver}
+                  disabled={accionesBloqueadas}
                 >
-                  Devolver al solicitante
+                  Devolver al solicitante para corrección
                 </button>
 
                 <button
                   type="button"
                   className="btn-danger"
                   onClick={handleUpcRechazar}
+                  disabled={accionesBloqueadas}
                 >
                   Rechazar solicitud
                 </button>
@@ -543,10 +709,9 @@ export default function SolicitudDetalle() {
             <section className="detalle-section detalle-full-width">
               <h2 className="detalle-section-title">Revisión Encargado UPC</h2>
               <p>
-                Revisa el expediente en <strong>Evaluación Técnica</strong>.
-                Si todo está conforme, remítelo a{" "}
-                <strong>DNCD (Aprobación DIGEAMPS)</strong>. Si necesitas que el
-                Técnico UPC corrija algo, devuélvelo indicando el motivo.
+                Revisa el expediente evaluado. Si todo está conforme, remite la
+                solicitud a la DNCD. Si consideras que deben hacerse ajustes,
+                devuélvela al Técnico UPC con tus observaciones.
               </p>
 
               <textarea
@@ -561,18 +726,102 @@ export default function SolicitudDetalle() {
                   type="button"
                   className="btn-primary"
                   onClick={handleEncargadoRemitirDncd}
+                  disabled={accionesBloqueadas}
                 >
-                  Remitir a DNCD (Aprobación DIGEAMPS)
+                  Remitir a DNCD
                 </button>
 
                 <button
                   type="button"
                   className="btn-warning"
                   onClick={handleEncargadoDevolverTecnico}
+                  disabled={accionesBloqueadas}
                 >
-                  Devolver al Técnico UPC
+                  Devolver al Técnico UPC para ajustes
                 </button>
               </div>
+            </section>
+          )}
+
+          {/* Panel DNCD */}
+          {esDNCD && (
+            <section className="detalle-section detalle-full-width">
+              <h2 className="detalle-section-title">Revisión DNCD</h2>
+              <p>
+                Revisa las solicitudes remitidas desde la Unidad de Productos
+                Controlados. Si todo está conforme, apruébalas y fírmales tu
+                conformidad. También puedes devolverlas para corrección.
+              </p>
+
+              <textarea
+                className="detalle-textarea"
+                placeholder="Comentario para Dirección o para el solicitante (motivo de devolución, observaciones)..."
+                value={comentarioDncd}
+                onChange={(e) => setComentarioDncd(e.target.value)}
+              />
+
+              <div className="detalle-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={handleDncdAprobar}
+                  disabled={accionesBloqueadas}
+                >
+                  Aprobar y firmar
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-warning"
+                  onClick={handleDncdDevolver}
+                  disabled={accionesBloqueadas}
+                >
+                  Devolver para corrección
+                </button>
+              </div>
+            </section>
+          )}
+
+          {/* Panel Dirección (simple) */}
+          {esDireccion && (
+            <section className="detalle-section detalle-full-width">
+              <h2 className="detalle-section-title">
+                Revisión Dirección de Productos Controlados
+              </h2>
+              <p>
+                Desde Dirección puedes revisar las solicitudes que ya cuentan
+                con la aprobación de la DNCD y decidir si se aprueban de forma
+                definitiva. Al aprobar y firmar, se habilita la posibilidad de
+                generar y consultar el certificado final.
+              </p>
+
+              {esEstadoAprobacionDNCD ? (
+                <button
+                  type="button"
+                  className="btn-primary btn-full"
+                  onClick={handleDireccionAprobar}
+                  disabled={accionesBloqueadas}
+                >
+                  Aprobar y firmar
+                </button>
+              ) : (
+                <p className="detalle-muted">
+                  No hay acciones disponibles para esta solicitud en este
+                  momento.
+                </p>
+              )}
+
+              {tieneCertificado && (
+                <div style={{ marginTop: "0.75rem" }}>
+                  <button
+                    type="button"
+                    className="btn-secondary btn-full"
+                    onClick={handleVerCertificado}
+                  >
+                    Ver certificado
+                  </button>
+                </div>
+              )}
             </section>
           )}
 
@@ -586,7 +835,7 @@ export default function SolicitudDetalle() {
                   type="button"
                   className="btn-primary"
                   disabled
-                  title="Descarga de certificación pendiente de implementar."
+                  title="Descarga de certificación pendiente de implementar para el solicitante."
                 >
                   Descargar certificación (próximamente)
                 </button>
