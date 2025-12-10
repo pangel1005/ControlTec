@@ -14,6 +14,14 @@ namespace ControlTec.Data
         public DbSet<Documento> Documentos { get; set; } = null!;
         public DbSet<DocumentoRequerido> DocumentosRequeridos { get; set; } = null!;
         public DbSet<HistorialEstado> HistorialEstados { get; set; } = null!;
+        public DbSet<Subservicio> Subservicios { get; set; } = null!;
+
+        public DbSet<FormularioDigital> FormulariosDigitales { get; set; } = null!;
+
+        public DbSet<RespuestaFormularioDigital> RespuestasFormulariosDigitales { get; set; } = null!;
+
+
+
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
