@@ -9,6 +9,8 @@ namespace ControlTec.Models
 
         public int ServicioId { get; set; }          // FK
 
+        public int Fase { get; set; } = 1;
+
         // Relación opcional con el Servicio
         [JsonIgnore]  // Evitar la referencia cíclica
         public Servicio? Servicio { get; set; }      // Relación con Servicio (opcional, ya que es nullable)

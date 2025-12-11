@@ -5,6 +5,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using ControlTec.Data;
+using ControlTec.Models; // Asegúrate de que la clase EstadosSolicitud esté en este namespace
 using ControlTec.Models;
 using ControlTec.Models.DTOs;
 using ControlTec.Services;
@@ -58,21 +59,7 @@ namespace ControlTec.Controllers
             public string Hacia { get; set; } = null!;
         }
 
-        private static class EstadosSolicitud
-        {
-            public const string Pendiente = "Pendiente";
-            public const string Depositada = "Depositada";
-            public const string ValidacionRecepcion = "Validación Recepción";
-            public const string EvaluacionTecnica = "Evaluación Técnica";
-            public const string AprobacionDIGEAMPS = "Aprobación DIGEAMPS";
-            public const string AprobacionDNCD = "Aprobación DNCD";
-            public const string EnRevisionVUS = "En Revisión VUS";
-            public const string Devuelta = "Devuelta";
-            public const string RechazadaET = "RechazadaET";      // Rechazo en evaluación técnica (interno)
-            public const string Aprobada = "Aprobada";
-            public const string Rechazada = "Rechazada";          // Rechazo final (visible al usuario)
-            public const string Entregada = "Entregada";
-        }
+        
 
         // ==============================
         // Bandeja por rol (para el GET)
@@ -140,11 +127,14 @@ namespace ControlTec.Controllers
             if (servicio == null)
                 return BadRequest("El servicio indicado no existe.");
 
+            // Estado inicial según servicio
+            var estadoInicial = (dto.ServicioId == 4 || dto.ServicioId == 5) ? "PendienteFase1" : EstadosSolicitud.Pendiente;
+
             var solicitud = new Solicitud
             {
                 UsuarioId = userId,
                 ServicioId = dto.ServicioId,
-                Estado = EstadosSolicitud.Pendiente,
+                Estado = estadoInicial,
                 FechaCreacion = DateTime.Now
             };
 
@@ -155,7 +145,7 @@ namespace ControlTec.Controllers
             {
                 SolicitudId = solicitud.Id,
                 EstadoAnterior = null,
-                EstadoNuevo = EstadosSolicitud.Pendiente,
+                EstadoNuevo = estadoInicial,
                 Comentario = "Solicitud iniciada desde el portal.",
                 UsuarioId = userId,
                 FechaCambio = DateTime.Now
@@ -186,7 +176,7 @@ namespace ControlTec.Controllers
                     servicio.Activo
                 },
                 DocumentosRequeridos = servicio.DocumentosRequeridos?
-                    .Select(dr => new { dr.Id, dr.Nombre })
+                    .Select(dr => new { dr.Id, dr.Nombre, dr.Fase })
                     .ToList()
             };
 
@@ -562,6 +552,8 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.ValidacionRecepcion },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta,  Hacia = EstadosSolicitud.ValidacionRecepcion },
+                // Permitir que VUS pase de Fase2Aprobada a Validación Recepción
+new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia = EstadosSolicitud.ValidacionRecepcion },
 
                 // Técnico UPC
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.EvaluacionTecnica },
@@ -665,6 +657,7 @@ namespace ControlTec.Controllers
             return Ok(resultado);
         }
 
+
         // ============================
         // 8. SUBIR DOCUMENTO A SOLICITUD
         // ============================
@@ -721,6 +714,7 @@ namespace ControlTec.Controllers
         {
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Servicio)
+                .Include(s => s.Usuario)
                 .Include(s => s.DocumentosCargados)
                 .Include(s => s.HistorialEstados)
                 .FirstOrDefaultAsync(s => s.Id == id);
@@ -732,22 +726,27 @@ namespace ControlTec.Controllers
             if (!User.IsInRole("Admin") && solicitud.UsuarioId != currentUserId)
                 return Forbid();
 
-            if (!string.Equals(solicitud.Estado, EstadosSolicitud.Pendiente, StringComparison.OrdinalIgnoreCase) &&
-                !string.Equals(solicitud.Estado, EstadosSolicitud.Devuelta, StringComparison.OrdinalIgnoreCase))
+            var estadoAnterior = solicitud.Estado;
+            string nuevoEstado = null;
+
+            if (solicitud.ServicioId == 4 || solicitud.ServicioId == 5)
             {
-                return BadRequest(
-                    $"La solicitud no está en un estado válido para ser enviada. Estado actual: '{solicitud.Estado}'.");
+                if (solicitud.Estado == EstadosSolicitud.PendienteFase1)
+                    nuevoEstado = EstadosSolicitud.DepositadaFase1;
+                else if (solicitud.Estado == EstadosSolicitud.PendienteFase2)
+                    nuevoEstado = EstadosSolicitud.DepositadaFase2;
+                else
+                    return BadRequest("No puedes enviar la solicitud en el estado actual para este servicio.");
+            }
+            else
+            {
+                if (solicitud.Estado == EstadosSolicitud.Pendiente || solicitud.Estado == EstadosSolicitud.Devuelta)
+                    nuevoEstado = EstadosSolicitud.Depositada;
+                else
+                    return BadRequest("No puedes enviar la solicitud en el estado actual.");
             }
 
-            var usuario = await _context.Usuarios.FindAsync(currentUserId);
-            if (usuario == null)
-                return BadRequest("El usuario que envía la solicitud no existe.");
-
-            var cargados = solicitud.DocumentosCargados?.ToList()
-                           ?? new List<Documento>();
-
-            var estadoAnterior = solicitud.Estado;
-            solicitud.Estado = EstadosSolicitud.Depositada;
+            solicitud.Estado = nuevoEstado;
 
             var comentario = string.IsNullOrWhiteSpace(dto.Comentario)
                 ? "Solicitud enviada por el usuario."
@@ -757,7 +756,7 @@ namespace ControlTec.Controllers
             {
                 SolicitudId = solicitud.Id,
                 EstadoAnterior = estadoAnterior,
-                EstadoNuevo = solicitud.Estado,
+                EstadoNuevo = nuevoEstado,
                 Comentario = comentario,
                 UsuarioId = currentUserId,
                 FechaCambio = DateTime.Now
@@ -771,25 +770,26 @@ namespace ControlTec.Controllers
                 solicitud.Id,
                 solicitud.Estado,
                 solicitud.FechaCreacion,
-                Usuario = new
+                Usuario = solicitud.Usuario == null ? null : new
                 {
-                    usuario.Id,
-                    usuario.Nombre,
-                    usuario.Correo,
-                    usuario.Roll
+                    solicitud.Usuario.Id,
+                    solicitud.Usuario.Nombre,
+                    solicitud.Usuario.Correo,
+                    solicitud.Usuario.Roll
                 },
                 Servicio = solicitud.Servicio == null ? null : new
                 {
                     solicitud.Servicio.Id,
                     solicitud.Servicio.Nombre
                 },
-                DocumentosCargados = cargados.Select(d => new
-                {
-                    d.Id,
-                    d.Nombre,
-                    d.Tipo,
-                    d.Ruta
-                }),
+                DocumentosCargados = solicitud.DocumentosCargados == null ? null :
+                    solicitud.DocumentosCargados.Select(d => new
+                    {
+                        d.Id,
+                        d.Nombre,
+                        d.Tipo,
+                        d.Ruta
+                    }),
                 Movimiento = new
                 {
                     nuevoHistorial.Id,
@@ -829,6 +829,47 @@ namespace ControlTec.Controllers
                 solicitud.Estado,
                 RutaCertificado = ruta
             });
+        }
+
+        // ==============================
+        // APROBAR FASES PARA SERVICIOS 4 Y 5 (VUS/Admin)
+        // ==============================
+
+        [Authorize(Roles = "VUS,Admin")]
+        [HttpPost("{solicitudId}/aprobar-fase1")]
+        public async Task<IActionResult> AprobarFase1(int solicitudId)
+        {
+            var solicitud = await _context.Solicitudes.FindAsync(solicitudId);
+            if (solicitud == null) return NotFound();
+
+            if (solicitud.Estado != EstadosSolicitud.DepositadaFase1)
+                return BadRequest("No está en la fase 1.");
+
+            // Aprueba Fase 1
+            solicitud.Estado = EstadosSolicitud.Fase1Aprobada;
+            await _context.SaveChangesAsync();
+
+            // Inicia Fase 2
+            solicitud.Estado = EstadosSolicitud.PendienteFase2;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { mensaje = "Fase 1 aprobada. Ahora el usuario puede subir y enviar documentos de Fase 2." });
+        }
+
+        // POST: api/Solicitudes/{solicitudId}/aprobar-fase2
+        [Authorize(Roles = "VUS,Admin")]
+        [HttpPost("{solicitudId}/aprobar-fase2")]
+        public async Task<IActionResult> AprobarFase2(int solicitudId)
+        {
+            var solicitud = await _context.Solicitudes.FindAsync(solicitudId);
+            if (solicitud == null) return NotFound();
+
+            if (solicitud.Estado != EstadosSolicitud.DepositadaFase2)
+                return BadRequest("No está en la fase 2.");
+
+            solicitud.Estado = EstadosSolicitud.Fase2Aprobada;
+            await _context.SaveChangesAsync();
+            return Ok(new { mensaje = "Fase 2 aprobada. Continúa el flujo normal." });
         }
 
         // ======================================
