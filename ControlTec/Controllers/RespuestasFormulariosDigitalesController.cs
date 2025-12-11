@@ -3,6 +3,7 @@ using ControlTec.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace ControlTec.Controllers
 {
@@ -26,7 +27,8 @@ namespace ControlTec.Controllers
         }
 
         // GET: api/RespuestasFormulariosDigitales/solicitud/5
-        [Authorize(Roles = "VUS,TecnicoUPC,EncargadoUPC,DNCD,Direccion,Admin")]
+        // Cualquier usuario autenticado puede ver las respuestas asociadas a una solicitud
+        [Authorize]
         [HttpGet("solicitud/{solicitudId}")]
         public async Task<ActionResult<RespuestaFormularioDigital?>> GetRespuestaPorSolicitud(int solicitudId)
         {
@@ -34,6 +36,7 @@ namespace ControlTec.Controllers
                 .FirstOrDefaultAsync(r => r.SolicitudId == solicitudId);
             if (resp == null)
                 return NotFound();
+
             return resp;
         }
     }
