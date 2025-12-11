@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/apiClient";
+import BackButton from "../../components/BackButtonClean.jsx";
 
 export default function NuevaSolicitud() {
   const navigate = useNavigate();
@@ -60,8 +61,9 @@ export default function NuevaSolicitud() {
     [];
 
   const handleStartSolicitud = (servicioId) => {
-    setExpandedId(servicioId);
+    navigate(`/formulario-digital/${servicioId}`);
   };
+
 
   const handleCancelSolicitud = (servicioId) => {
     setExpandedId(null);
@@ -86,30 +88,12 @@ export default function NuevaSolicitud() {
     handleFilesSelected(servicioId, e.dataTransfer.files);
   };
 
-  // 👉 Botón "Descargar formulario para rellenar"
+  // 👉 Botón "Rellenar formulario"
   const handleDownloadFormulario = (servicio) => {
-    let ruta = null;
-
-    if (servicio.id === 1) {
-      ruta = getRutaByServiceId(6); // Formulario A
-    } else if (servicio.id === 2 || servicio.id === 3) {
-      ruta = getRutaByServiceId(7); // Formulario B-2
-    } else if (servicio.id === 4 || servicio.id === 5) {
-      alert(
-        "Este servicio no tiene un formulario A/B asociado. Utiliza el PDF informativo."
-      );
-      return;
-    } else {
-      ruta = servicio.rutaFormularioBase;
-    }
-
-    if (!ruta) {
-      alert("No se encontró el formulario para este servicio.");
-      return;
-    }
-
-    openRuta(ruta);
+    // Redirigir a la pantalla de formulario digital
+    navigate(`/formulario-digital/${servicio.id}`);
   };
+
 
   // 👉 Botón "Descargar pdf con más información"
   const handleDownloadInfo = (servicio) => {
@@ -195,9 +179,21 @@ export default function NuevaSolicitud() {
   };
 
   // ================== RENDER ==================
+  if (loading) {
+    return (
+      <div className="page-container nueva-solicitud-page">
+        <BackButton />
+        <h1 className="nueva-solicitud-title">Iniciar nueva solicitud</h1>
+        <p className="nueva-solicitud-subtitle">
+          Selecciona el servicio para el cual deseas iniciar una solicitud.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container nueva-solicitud-page">
+      <BackButton />
       <div className="nueva-solicitud-header">
         <div>
           <h1 className="nueva-solicitud-title">Iniciar nueva solicitud</h1>
@@ -281,14 +277,7 @@ export default function NuevaSolicitud() {
                     Descargar pdf con más información
                   </button>
 
-                  <button
-                    type="button"
-                    className="btn-outline servicio-side-btn"
-                    onClick={() => handleDownloadFormulario(servicio)}
-                  >
-                    Descargar formulario para rellenar
-                  </button>
-
+                  
                   {!isExpanded && (
                     <button
                       type="button"

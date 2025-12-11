@@ -17,11 +17,13 @@ import Register from "./pages/auth/Register.jsx";
 import MisSolicitudes from "./pages/solicitante/MisSolicitudes.jsx";
 import NuevaSolicitud from "./pages/solicitante/NuevaSolicitud.jsx";
 import SolicitudDetalle from "./pages/solicitante/SolicitudDetalle.jsx";
+import FormularioDigital from "./pages/solicitante/FormularioDigital.jsx";
 
 // Admin
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminUsuarios from "./pages/admin/AdminUsuarios.jsx";
 import AdminServicios from "./pages/admin/AdminServicios.jsx";
+import AdminServicioConfig from "./pages/admin/AdminServicioConfig.jsx";
 
 // Técnico UPC
 import UpcDashboard from "./pages/upc/UpcDashboard.jsx";
@@ -84,6 +86,14 @@ function AppInner() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/servicios/:id/configuracion"
+            element={
+              <ProtectedRoute roles={["Admin"]}>
+                <AdminServicioConfig />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Solicitante */}
           <Route
@@ -99,6 +109,14 @@ function AppInner() {
             element={
               <ProtectedRoute roles={["Solicitante"]}>
                 <NuevaSolicitud />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/formulario-digital/:subservicioId"
+            element={
+              <ProtectedRoute roles={["Solicitante"]}>
+                <FormularioDigital />
               </ProtectedRoute>
             }
           />

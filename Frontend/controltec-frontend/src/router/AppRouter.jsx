@@ -19,6 +19,7 @@ import AdminUsuarios from "../pages/admin/AdminUsuarios.jsx";
 import MisSolicitudes from "../pages/solicitante/MisSolicitudes.jsx";
 import NuevaSolicitud from "../pages/solicitante/NuevaSolicitud.jsx";
 import SolicitudDetalle from "../pages/solicitante/SolicitudDetalle.jsx";
+import FormularioDigital from "../pages/solicitante/FormularioDigital.jsx";
 
 import VusDashboard from "../pages/vus/VusDashboard.jsx";
 import VusSolicitudes from "../pages/vus/VusSolicitudes.jsx";
@@ -67,6 +68,15 @@ export default function App() {
           element={
             <ProtectedRoute>
               <SolicitudDetalle />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/formulario-digital/:subservicioId"
+          element={
+            <ProtectedRoute roles={["Solicitante"]}>
+              <FormularioDigital />
             </ProtectedRoute>
           }
         />

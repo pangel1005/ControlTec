@@ -27,6 +27,33 @@
   color: #6b7280;
 }
 
+/* Datos de formulario digital en detalle */
+.detalle-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem 1.5rem;
+  margin-top: 0.25rem;
+}
+
+.detalle-form-field {
+  font-size: 0.9rem;
+}
+
+.detalle-form-label {
+  font-weight: 600;
+  color: #111827;
+  margin-bottom: 0.1rem;
+}
+
+.detalle-form-value {
+  font-size: 0.9rem;
+  color: #374151;
+  background: #ffffff;
+  border-radius: 0.5rem;
+  border: 1px solid #e5e7eb;
+  padding: 0.35rem 0.6rem;
+}
+
 .solicitudes-new-btn {
   width: auto;
   padding-inline: 1.4rem;
@@ -593,5 +620,9 @@
   .detalle-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .detalle-form-grid {
+    grid-template-columns: 1fr;
   }
 }
