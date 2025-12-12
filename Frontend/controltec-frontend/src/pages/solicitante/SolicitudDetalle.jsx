@@ -324,7 +324,7 @@ export default function SolicitudDetalle() {
     setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
-        estadoNuevo: "RechazarET",
+        estadoNuevo: "RechazadaET",
         comentario: comentarioUpc,
       });
 
@@ -514,9 +514,11 @@ export default function SolicitudDetalle() {
         comentario: "Solicitud aprobada y firmada por Dirección.",
       });
 
+      // Generar el certificado automáticamente
+      await api.post(`/api/Solicitudes/${detalle.id}/certificado`, {});
       await cargarDetalle();
       alert(
-        "Solicitud aprobada y firmada por Dirección. Luego podrás generar o ver el certificado."
+        "Solicitud aprobada y certificado generado. Puedes descargarlo desde el botón correspondiente."
       );
     } catch (err) {
       console.error("Error al aprobar como Dirección:", err);
@@ -812,7 +814,7 @@ export default function SolicitudDetalle() {
 
               <textarea
                 className="detalle-textarea"
-                placeholder="Comentario para el solicitante o para el flujo (observaciones, motivo de devolución/rechazo)..."
+                placeholder="Comentario para el comunicado de rechazo (Dirección lo firmará y lo enviará al usuario)..."
                 value={comentarioUpc}
                 onChange={(e) => setComentarioUpc(e.target.value)}
               />
@@ -839,10 +841,11 @@ export default function SolicitudDetalle() {
                 <button
                   type="button"
                   className="btn-danger"
+                  title="Este rechazo enviará la solicitud a Dirección para que firmen y comuniquen el rechazo al usuario."
                   onClick={handleUpcRechazar}
                   disabled={accionesBloqueadas}
                 >
-                  Rechazar solicitud
+                  Rechazar y enviar a Dirección para comunicado
                 </button>
               </div>
             </section>
@@ -948,6 +951,58 @@ export default function SolicitudDetalle() {
                 >
                   Aprobar y firmar
                 </button>
+              ) : detalle.estado === "RechazadaET" ? (
+                <>
+                  <button
+                    type="button"
+                    className="btn-primary btn-full"
+                    onClick={async () => {
+                      setAccionesBloqueadas(true);
+                      try {
+                        await api.post(`/api/Solicitudes/${detalle.id}/comunicacion-rechazo`, {});
+                        await cargarDetalle();
+                        alert("Comunicado de rechazo generado y firmado. El usuario ya puede verlo.");
+                      } catch (err) {
+                        alert("No fue posible generar el comunicado de rechazo. Verifica permisos y estado actual.");
+                        setAccionesBloqueadas(false);
+                      }
+                    }}
+                    disabled={accionesBloqueadas}
+                    style={{ marginBottom: 8 }}
+                  >
+                    Firmar y generar comunicado de rechazo
+                  </button>
+                  {detalle.rutaComunicacionRechazo && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-secondary btn-full"
+                        onClick={() => {
+                          const base = api.defaults.baseURL || "";
+                          window.open(`${base}${detalle.rutaComunicacionRechazo}`, "_blank");
+                        }}
+                      >
+                        Ver comunicado de rechazo
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-primary btn-full"
+                        style={{ marginTop: 8 }}
+                        onClick={() => {
+                          const base = api.defaults.baseURL || "";
+                          const link = document.createElement('a');
+                          link.href = `${base}${detalle.rutaComunicacionRechazo}`;
+                          link.download = `Notificacion_Rechazo_Solicitud_${detalle.id}.pdf`;
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                        }}
+                      >
+                        Descargar notificación de rechazo
+                      </button>
+                    </>
+                  )}
+                </>
               ) : (
                 <p className="detalle-muted">
                   No hay acciones disponibles para esta solicitud en este
@@ -969,20 +1024,50 @@ export default function SolicitudDetalle() {
             </section>
           )}
 
-          {/* Acciones del solicitante */}
           {esSolicitante && (
             <section className="detalle-section detalle-full-width">
               <h2 className="detalle-section-title">Acciones</h2>
 
-              {esAprobada && (
+              {detalle.rutaCertificado && (
                 <button
                   type="button"
                   className="btn-primary"
-                  disabled
-                  title="Descarga de certificación pendiente de implementar para el solicitante."
+                  onClick={handleVerCertificado}
                 >
-                  Descargar certificación (próximamente)
+                  Ver certificado
                 </button>
+              )}
+
+              {detalle.rutaComunicacionRechazo && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => {
+                      const base = api.defaults.baseURL || "";
+                      window.open(`${base}${detalle.rutaComunicacionRechazo}`, "_blank");
+                    }}
+                  >
+                    Ver comunicado de rechazo
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ marginLeft: 8 }}
+                    onClick={() => {
+                      const base = api.defaults.baseURL || "";
+                      // Forzar descarga en vez de solo abrir
+                      const link = document.createElement('a');
+                      link.href = `${base}${detalle.rutaComunicacionRechazo}`;
+                      link.download = `Notificacion_Rechazo_Solicitud_${detalle.id}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    Descargar notificación de rechazo
+                  </button>
+                </>
               )}
 
               {/* SOLO permitir subir archivos cuando está DEVUELTA, no RECHAZADA */}

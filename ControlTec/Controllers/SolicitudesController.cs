@@ -568,6 +568,7 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.EvaluacionTecnica },
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Rechazada },
+                new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.RechazadaET },
 
                 // Encargado UPC (DIGEAMPS) – RF-2.3
                 // Aprobado → Aprobación DIGEAMPS
@@ -878,6 +879,14 @@ namespace ControlTec.Controllers
 
             solicitud.Estado = EstadosSolicitud.Fase2Aprobada;
             await _context.SaveChangesAsync();
+
+            // Para servicios 4 y 5, pasar inmediatamente a Validación Recepción
+            if (solicitud.ServicioId == 4 || solicitud.ServicioId == 5)
+            {
+                solicitud.Estado = EstadosSolicitud.ValidacionRecepcion;
+                await _context.SaveChangesAsync();
+            }
+
             return Ok(new { mensaje = "Fase 2 aprobada. Continúa el flujo normal." });
         }
 
