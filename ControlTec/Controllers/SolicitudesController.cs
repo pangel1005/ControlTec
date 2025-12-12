@@ -70,6 +70,8 @@ namespace ControlTec.Controllers
             { "VUS", new[]
                 {
                     EstadosSolicitud.Depositada,   // cuando el usuario la envía
+                    EstadosSolicitud.DepositadaFase1, // fase 1
+                    EstadosSolicitud.DepositadaFase2, // fase 2
                     EstadosSolicitud.Devuelta      // cuando vuelve corregida
                     // NO ve ni RechazadaET ni Rechazada
                 }
@@ -127,8 +129,13 @@ namespace ControlTec.Controllers
             if (servicio == null)
                 return BadRequest("El servicio indicado no existe.");
 
+
             // Estado inicial según servicio
-            var estadoInicial = (dto.ServicioId == 4 || dto.ServicioId == 5) ? "PendienteFase1" : EstadosSolicitud.Pendiente;
+            var estadoInicial = (dto.ServicioId == 4 || dto.ServicioId == 5)
+                ? EstadosSolicitud.PendienteFase1 // Fase 1 para servicios 4 y 5
+                : EstadosSolicitud.Pendiente;
+
+
 
             var solicitud = new Solicitud
             {
@@ -549,11 +556,13 @@ namespace ControlTec.Controllers
             var transiciones = new List<TransicionRol>
             {
                 // VUS (primera etapa)
-                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.ValidacionRecepcion },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Fase1Aprobada },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.DepositadaFase1, Hacia = EstadosSolicitud.Fase1Aprobada },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.DepositadaFase1, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta,  Hacia = EstadosSolicitud.ValidacionRecepcion },
                 // Permitir que VUS pase de Fase2Aprobada a Validación Recepción
-new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia = EstadosSolicitud.ValidacionRecepcion },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia = EstadosSolicitud.ValidacionRecepcion },
 
                 // Técnico UPC
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.EvaluacionTecnica },

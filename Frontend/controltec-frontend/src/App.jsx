@@ -23,6 +23,8 @@ import FormularioDigital from "./pages/solicitante/FormularioDigital.jsx";
 import AdminDashboard from "./pages/admin/AdminDashboard.jsx";
 import AdminUsuarios from "./pages/admin/AdminUsuarios.jsx";
 import AdminServicios from "./pages/admin/AdminServicios.jsx";
+import CrearServicio from "./pages/admin/CrearServicio.jsx";
+import EditarServicio from "./pages/admin/EditarServicio.jsx";
 import AdminServicioConfig from "./pages/admin/AdminServicioConfig.jsx";
 
 // Técnico UPC
@@ -83,6 +85,22 @@ function AppInner() {
             element={
               <ProtectedRoute roles={["Admin"]}>
                 <AdminServicios />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/servicios/crear"
+            element={
+              <ProtectedRoute roles={["Admin"]}>
+                <CrearServicio />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/servicios/editar/:id"
+            element={
+              <ProtectedRoute roles={["Admin"]}>
+                <EditarServicio />
               </ProtectedRoute>
             }
           />

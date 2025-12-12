@@ -4,6 +4,68 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/apiClient";
 import { useAuth } from "../../context/AuthContext";
 
+import { useEffect as useEffectReact, useState as useStateReact } from "react";
+
+function FormularioDigitalDetalle({ solicitudId }) {
+  const [respuestas, setRespuestas] = useStateReact(null);
+  const [estructura, setEstructura] = useStateReact(null);
+  const [loading, setLoading] = useStateReact(true);
+  const [error, setError] = useStateReact("");
+
+  useEffectReact(() => {
+    let cancelado = false;
+    async function cargar() {
+      setLoading(true);
+      setError("");
+      try {
+        // 1. Obtener respuestas del formulario digital
+        const respRes = await api.get(`/api/RespuestasFormulariosDigitales/solicitud/${solicitudId}`);
+        if (!respRes.data) {
+          setRespuestas(null);
+          setEstructura(null);
+          setLoading(false);
+          return;
+        }
+        setRespuestas(respRes.data.respuestasJson ? JSON.parse(respRes.data.respuestasJson) : {});
+        // 2. Obtener estructura del formulario digital
+        if (respRes.data.formularioDigitalId) {
+          const formRes = await api.get(`/api/FormulariosDigitales/${respRes.data.formularioDigitalId}`);
+          setEstructura(formRes.data.estructuraJson ? JSON.parse(formRes.data.estructuraJson) : {});
+        } else {
+          setEstructura(null);
+        }
+      } catch (err) {
+        setError("No se pudo cargar los datos del formulario digital.");
+        setRespuestas(null);
+        setEstructura(null);
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    }
+    cargar();
+    return () => { cancelado = true; };
+  }, [solicitudId]);
+
+  if (loading) return <p>Cargando datos del formulario digital...</p>;
+  if (error) return <p className="detalle-muted">{error}</p>;
+  if (!estructura || !estructura.campos || estructura.campos.length === 0)
+    return <p className="detalle-muted">No hay datos del formulario digital para esta solicitud.</p>;
+  return (
+    <ul className="detalle-form-list">
+      {estructura.campos.map((campo, idx) => (
+        <li key={campo.nombre || idx} style={{ marginBottom: 8 }}>
+          <strong>{campo.etiqueta || campo.nombre}:</strong>{" "}
+          {campo.tipo === "checkbox"
+            ? (respuestas && respuestas[campo.nombre] ? "Sí" : "No")
+            : (respuestas && respuestas[campo.nombre] !== undefined && respuestas[campo.nombre] !== null && respuestas[campo.nombre] !== "")
+              ? respuestas[campo.nombre]
+              : <span style={{ color: '#6b7280' }}>[Sin dato]</span>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export default function SolicitudDetalle() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -87,15 +149,34 @@ export default function SolicitudDetalle() {
     setReuploadFiles(files);
   };
 
-  const handleEnviarNuevosDocs = () => {
+  const handleEnviarNuevosDocs = async () => {
     if (reuploadFiles.length === 0) {
       alert("Debes seleccionar al menos un documento.");
       return;
     }
 
-    alert(
-      "Reenvío de documentos pendiente de implementar en el backend. Solo es una vista de ejemplo."
-    );
+    try {
+      // 1. Subir los archivos
+      for (const file of reuploadFiles) {
+        const formData = new FormData();
+        formData.append("archivo", file);
+        await api.post(`/api/Solicitudes/${detalle.id}/documentos`, formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        });
+      }
+      // 2. Cambiar estado llamando a /enviar
+      await api.post(`/api/Solicitudes/${detalle.id}/enviar`, {
+        comentario: "Documentos de Fase 2 enviados por el usuario."
+      });
+      setReuploadFiles([]);
+      await cargarDetalle();
+      alert("Documentos de Fase 2 enviados correctamente.");
+    } catch (err) {
+      console.error("Error al enviar documentos de Fase 2:", err);
+      alert("No fue posible enviar los documentos de Fase 2. Intenta de nuevo.");
+    }
   };
 
   // Estados lógicos
@@ -119,12 +200,7 @@ export default function SolicitudDetalle() {
 
     setAccionesBloqueadas(true);
     try {
-      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
-        estadoNuevo: "Validación Recepción",
-        comentario:
-          comentarioVus ||
-          "Documentación verificada por VUS. Se remite a la siguiente revisión.",
-      });
+      await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase1`, {});
 
       setComentarioVus("");
       await cargarDetalle();
@@ -515,6 +591,45 @@ export default function SolicitudDetalle() {
             <p className="detalle-subtitle">
               Servicio: {detalle.servicio?.nombre ?? "Sin servicio asociado"}
             </p>
+            {/* Indicador de fase */}
+            <div style={{ marginTop: 8 }}>
+              <span style={{
+                background: '#e0e7ff',
+                color: '#3730a3',
+                borderRadius: 6,
+                padding: '2px 10px',
+                fontWeight: 600,
+                fontSize: 14,
+              }}>
+                Fase actual: {detalle.estado}
+              </span>
+              {detalle.estado === "PendienteFase2" && (
+                <span style={{
+                  background: '#bbf7d0',
+                  color: '#166534',
+                  borderRadius: 6,
+                  padding: '2px 10px',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  marginLeft: 12,
+                }}>
+                  Puedes subir y enviar documentos de Fase 2
+                </span>
+              )}
+              {detalle.estado !== "PendienteFase2" && detalle.estado !== "Fase1Aprobada" && detalle.estado !== "DepositadaFase2" && (
+                <span style={{
+                  background: '#fee2e2',
+                  color: '#991b1b',
+                  borderRadius: 6,
+                  padding: '2px 10px',
+                  fontWeight: 600,
+                  fontSize: 14,
+                  marginLeft: 12,
+                }}>
+                  Solo podrás subir documentos cuando la solicitud esté en Fase 2
+                </span>
+              )}
+            </div>
           </div>
 
           <span className={getEstadoClass(detalle.estado)}>
@@ -540,6 +655,12 @@ export default function SolicitudDetalle() {
             <p className="detalle-servicio-descripcion">
               {detalle.servicio?.descripcion ?? "Este servicio no tiene descripción registrada."}
             </p>
+          </section>
+
+          {/* Detalles del formulario digital */}
+          <section className="detalle-section">
+            <h2 className="detalle-section-title">Detalles del formulario digital</h2>
+            <FormularioDigitalDetalle solicitudId={detalle.id} />
           </section>
 
           {/* Requerimientos */}
@@ -620,11 +741,11 @@ export default function SolicitudDetalle() {
           {esVus && (
             <section className="detalle-section detalle-full-width">
               <h2 className="detalle-section-title">Revisión VUS</h2>
+
               <p>
-                Verifica que todos los documentos requeridos estén cargados. Si
-                están completos, puedes enviar la solicitud a la siguiente
-                revisión. Si faltan documentos, devuélvela al solicitante
-                indicando el motivo.
+                Verifica que todos los documentos requeridos estén cargados. Si están
+                completos, puedes enviar la solicitud a la siguiente revisión. Si faltan
+                documentos, devuélvela al solicitante indicando el motivo.
               </p>
 
               <textarea
@@ -635,14 +756,37 @@ export default function SolicitudDetalle() {
               />
 
               <div className="detalle-actions">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleVusAprobar}
-                  disabled={accionesBloqueadas}
-                >
-                  Confirmar revisión y enviar
-                </button>
+                {detalle.estado === "DepositadaFase2" ? (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={async () => {
+                      setAccionesBloqueadas(true);
+                      try {
+                        await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase2`, {});
+                        setComentarioVus("");
+                        await cargarDetalle();
+                        alert("Fase 2 aprobada. El flujo continúa con el Técnico UPC.");
+                      } catch (err) {
+                        console.error("Error al aprobar Fase 2 como VUS:", err);
+                        alert("No fue posible aprobar Fase 2. Verifica que el backend permita esta transición.");
+                        setAccionesBloqueadas(false);
+                      }
+                    }}
+                    disabled={accionesBloqueadas}
+                  >
+                    Aprobar Fase 2
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleVusAprobar}
+                    disabled={accionesBloqueadas}
+                  >
+                    Aprobar Fase 1
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -654,7 +798,7 @@ export default function SolicitudDetalle() {
                 </button>
               </div>
             </section>
-          )}
+)}
 
           {/* Panel Técnico UPC */}
           {esTecnicoUPC && (
@@ -856,7 +1000,24 @@ export default function SolicitudDetalle() {
                   {reuploadFiles.length > 0 && (
                     <ul className="detalle-list">
                       {reuploadFiles.map((f, i) => (
-                        <li key={i}>{f.name}</li>
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {f.name}
+                          <button
+                            type="button"
+                            aria-label="Eliminar archivo"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              fontSize: 18,
+                              padding: 0,
+                            }}
+                            onClick={() => setReuploadFiles(prev => prev.filter((_, idx) => idx !== i))}
+                          >
+                            ×
+                          </button>
+                        </li>
                       ))}
                     </ul>
                   )}
@@ -866,6 +1027,51 @@ export default function SolicitudDetalle() {
                     onClick={handleEnviarNuevosDocs}
                   >
                     Enviar nuevos documentos
+                  </button>
+                </div>
+              )}
+
+              {/* Permitir subir documentos de Fase 2 solo cuando el estado es PendienteFase2 */}
+              {detalle.estado === "PendienteFase2" && (
+                <div className="detalle-reupload">
+                  <p className="detalle-muted">
+                    Adjunta los documentos requeridos para la Fase 2 y envíalos para validación del VUS.
+                  </p>
+                  <input
+                    type="file"
+                    multiple
+                    onChange={handleReuploadChange}
+                  />
+                  {reuploadFiles.length > 0 && (
+                    <ul className="detalle-list">
+                      {reuploadFiles.map((f, i) => (
+                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {f.name}
+                          <button
+                            type="button"
+                            aria-label="Eliminar archivo"
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#ef4444',
+                              cursor: 'pointer',
+                              fontSize: 18,
+                              padding: 0,
+                            }}
+                            onClick={() => setReuploadFiles(prev => prev.filter((_, idx) => idx !== i))}
+                          >
+                            ×
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={handleEnviarNuevosDocs}
+                  >
+                    Enviar documentos de Fase 2
                   </button>
                 </div>
               )}

@@ -28,20 +28,25 @@ export default function VusDashboard() {
         const res = await api.get("/api/Solicitudes");
         const todas = res.data || [];
 
-        const depositadas = todas.filter(
-          (s) => normalizarEstado(s.estado) === "depositada"
-        );
+        const paraRevisionVus = todas.filter((s) => {
+          const estado = normalizarEstado(s.estado);
+          return (
+            estado === "depositada" ||
+            estado === "depositadafase1" ||
+            estado === "depositadafase2"
+          );
+        });
 
-        setSolicitudesDepos(depositadas);
+        setSolicitudesDepos(paraRevisionVus);
       } catch (err) {
-        console.error("Error cargando solicitudes depositadas:", err);
+        console.error("Error cargando solicitudes para VUS:", err);
         const status = err.response?.status;
 
         if (status === 401) {
           setErrorDepos("Tu sesión ha expirado. Vuelve a iniciar sesión.");
         } else {
           setErrorDepos(
-            "Ocurrió un error al cargar las solicitudes depositadas."
+            "Ocurrió un error al cargar las solicitudes para revisión."
           );
         }
       } finally {
@@ -72,10 +77,18 @@ export default function VusDashboard() {
 
       const relacionadas = todas.filter((s) => {
         const estado = normalizarEstado(s.estado);
-        return estado === "depositada" || estado === "devuelta";
+        return (
+          estado === "depositada" ||
+          estado === "depositadafase1" ||
+          estado === "depositadafase2"
+        );
       });
 
-      setSolicitudesCedula(relacionadas);
+      const filtradasPorCedula = relacionadas.filter((s) => {
+        return true;
+      });
+
+      setSolicitudesCedula(filtradasPorCedula);
     } catch (err) {
       console.error("Error buscando por cédula:", err);
       const status = err.response?.status;
@@ -96,20 +109,27 @@ export default function VusDashboard() {
     }
   };
 
+  const getEstadoBadgeClass = (estado) => {
+    const estadoNorm = normalizarEstado(estado);
+    if (estadoNorm === "depositadafase1") return "badge badge-info";
+    if (estadoNorm === "depositadafase2") return "badge badge-primary";
+    return "badge badge-warning";
+  };
+
   return (
     <div className="page-container vus-layout">
       <header className="vus-header">
         <h1>Bandeja VUS</h1>
         <p>
-          Revisa las solicitudes depositadas y busca por cédula las
-          solicitudes devueltas o pendientes de un solicitante.
+          Revisa las solicitudes pendientes de validación por VUS:
+          <strong> Depositadas</strong>, <strong>Depositadas Fase 1</strong> y{" "}
+          <strong>Depositadas Fase 2</strong>.
         </p>
       </header>
 
-      {/* BLOQUE 1: Solicitudes depositadas */}
       <section className="vus-card">
         <div className="vus-card-header">
-          <h2>Solicitudes depositadas</h2>
+          <h2>Solicitudes para revisión VUS</h2>
           <span className="vus-pill">
             {loadingDepos
               ? "Cargando..."
@@ -123,8 +143,7 @@ export default function VusDashboard() {
           <p className="login-error">{errorDepos}</p>
         ) : solicitudesDepos.length === 0 ? (
           <p className="detalle-muted">
-            No hay solicitudes en estado <strong>Depositada</strong> para
-            revisar.
+            No hay solicitudes pendientes de revisión por VUS.
           </p>
         ) : (
           <div className="tabla-wrapper">
@@ -146,7 +165,9 @@ export default function VusDashboard() {
                     <td className="col-servicio">{s.servicio?.nombre}</td>
                     <td>{s.usuario?.nombre ?? "N/D"}</td>
                     <td>
-                      <span className="badge badge-warning">{s.estado}</span>
+                      <span className={getEstadoBadgeClass(s.estado)}>
+                        {s.estado}
+                      </span>
                     </td>
                     <td>
                       {new Date(s.fechaCreacion).toLocaleString("es-DO", {
@@ -162,7 +183,7 @@ export default function VusDashboard() {
                         to={`/solicitudes/${s.id}`}
                         className="btn-secondary btn-sm btn-full"
                       >
-                        Ver
+                        Revisar
                       </Link>
                     </td>
                   </tr>
@@ -173,7 +194,6 @@ export default function VusDashboard() {
         )}
       </section>
 
-      {/* BLOQUE 2: Buscar por cédula */}
       <section className="vus-card">
         <h2 className="vus-card-title">Buscar solicitudes por cédula</h2>
 
@@ -196,7 +216,7 @@ export default function VusDashboard() {
 
         {errorCedula && <p className="login-error">{errorCedula}</p>}
 
-        {solicitudesCedula.length > 0 && (
+        {solicitudesCedula.length > 0 ? (
           <div className="vus-search-results">
             <h3>Resultados de búsqueda</h3>
             <div className="tabla-wrapper">
@@ -218,13 +238,7 @@ export default function VusDashboard() {
                       <td className="col-servicio">{s.servicio?.nombre}</td>
                       <td>{s.usuario?.nombre ?? "N/D"}</td>
                       <td>
-                        <span
-                          className={
-                            normalizarEstado(s.estado) === "devuelta"
-                              ? "badge badge-danger"
-                              : "badge badge-warning"
-                          }
-                        >
+                        <span className={getEstadoBadgeClass(s.estado)}>
                           {s.estado}
                         </span>
                       </td>
@@ -251,7 +265,11 @@ export default function VusDashboard() {
               </table>
             </div>
           </div>
-        )}
+        ) : cedula && !buscandoCedula ? (
+          <p className="detalle-muted" style={{ marginTop: "1rem" }}>
+            No se encontraron solicitudes para esta cédula.
+          </p>
+        ) : null}
       </section>
     </div>
   );

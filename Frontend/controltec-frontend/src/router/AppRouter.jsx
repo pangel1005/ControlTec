@@ -14,6 +14,7 @@ import Register from "../pages/auth/Register.jsx";
 
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import AdminServicios from "../pages/admin/AdminServicios.jsx";
+import CrearServicio from "../pages/admin/CrearServicio.jsx";
 import AdminUsuarios from "../pages/admin/AdminUsuarios.jsx";
 
 import MisSolicitudes from "../pages/solicitante/MisSolicitudes.jsx";
@@ -36,6 +37,30 @@ export default function App() {
         <Route path="/login" element={<Login />} />
 
         {/* Rutas protegidas */}
+        <Route
+          path="/admin/servicios"
+          element={
+            <ProtectedRoute>
+              <AdminServicios />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/servicios/crear"
+          element={
+            <ProtectedRoute>
+              <CrearServicio />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/servicios/editar/:id"
+          element={
+            <ProtectedRoute>
+              <CrearServicio />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/dashboard"
           element={

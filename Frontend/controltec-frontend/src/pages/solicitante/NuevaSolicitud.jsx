@@ -13,7 +13,7 @@ export default function NuevaSolicitud() {
 
   const [expandedId, setExpandedId] = useState(null);
   const [filesByService, setFilesByService] = useState({});
-  const [submitting, setSubmitting] = useState(false); // 👈 nuevo
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     const cargarServicios = async () => {
@@ -60,10 +60,13 @@ export default function NuevaSolicitud() {
     servicio.documentosrequeridos ||
     [];
 
-  const handleStartSolicitud = (servicioId) => {
-    navigate(`/formulario-digital/${servicioId}`);
+  const handleStartSolicitud = (servicioId, servicio) => {
+    if (servicio.id === 4 || servicio.id === 5) {
+      setExpandedId(servicioId);
+    } else {
+      navigate(`/formulario-digital/${servicioId}`);
+    }
   };
-
 
   const handleCancelSolicitud = (servicioId) => {
     setExpandedId(null);
@@ -93,7 +96,6 @@ export default function NuevaSolicitud() {
     // Redirigir a la pantalla de formulario digital
     navigate(`/formulario-digital/${servicio.id}`);
   };
-
 
   // 👉 Botón "Descargar pdf con más información"
   const handleDownloadInfo = (servicio) => {
@@ -131,9 +133,10 @@ export default function NuevaSolicitud() {
     try {
       setSubmitting(true);
 
-      // 1) Crear la solicitud en el backend
+      // 1) Crear la solicitud con estado PENDIENTE (el backend lo maneja)
       const iniciarRes = await api.post("/api/Solicitudes/iniciar", {
         servicioId: servicio.id,
+        // 👉 YA NO pasamos Estado: "Depositada"
       });
 
       const solicitudId =
@@ -155,7 +158,7 @@ export default function NuevaSolicitud() {
         });
       }
 
-      // 3) Marcar la solicitud como enviada / depositada
+      // 3) 🚀 AHORA SÍ marcamos la solicitud como enviada/depositada
       await api.post(`/api/Solicitudes/${solicitudId}/enviar`, {
         comentario: "Solicitud enviada desde el portal de ControlTec.",
       });
@@ -166,13 +169,13 @@ export default function NuevaSolicitud() {
           successMessage: `Tu solicitud para "${servicio.nombre}" fue enviada correctamente.`,
         },
       });
-        } catch (err) {
-        console.error("Error al enviar solicitud:", err);
-        console.error("Status:", err.response?.status);
-        console.error("Respuesta del backend:", err.response?.data);
-        alert(
-            "Ocurrió un error al guardar la solicitud o subir los documentos. Inténtalo de nuevo."
-        );
+    } catch (err) {
+      console.error("Error al enviar solicitud:", err);
+      console.error("Status:", err.response?.status);
+      console.error("Respuesta del backend:", err.response?.data);
+      alert(
+        "Ocurrió un error al guardar la solicitud o subir los documentos. Inténtalo de nuevo."
+      );
     } finally {
       setSubmitting(false);
     }
@@ -277,12 +280,11 @@ export default function NuevaSolicitud() {
                     Descargar pdf con más información
                   </button>
 
-                  
                   {!isExpanded && (
                     <button
                       type="button"
                       className="btn-primary servicio-side-btn"
-                      onClick={() => handleStartSolicitud(servicio.id)}
+                      onClick={() => handleStartSolicitud(servicio.id, servicio)}
                     >
                       Iniciar solicitud
                     </button>

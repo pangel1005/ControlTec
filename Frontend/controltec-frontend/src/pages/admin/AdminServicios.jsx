@@ -2,7 +2,10 @@
 import { useEffect, useState } from "react";
 import api from "../../api/apiClient";
 
+import { useNavigate } from "react-router-dom";
+
 export default function AdminServicios() {
+  const navigate = useNavigate();
   const [servicios, setServicios] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -151,206 +154,83 @@ export default function AdminServicios() {
   };
 
   return (
-    <div className="page">
+    <div className="page-container admin-servicios-page">
       <h1>Catálogo de Servicios y Requisitos</h1>
-      <p>
-        Configura los servicios y la lista de requisitos (incluyendo formulario
-        PDF e información en PDF) que se usarán en las solicitudes.
+      <p className="admin-servicios-desc">
+        Configura los servicios y la lista de requisitos (incluyendo formulario PDF e información en PDF) que se usarán en las solicitudes.
       </p>
-
-      {error && (
-        <div className="login-error-banner" style={{ marginTop: "1rem" }}>
-          {error}
-        </div>
-      )}
-
-      <div className="admin-two-columns">
-        {/* Columna izquierda: formulario CREAR / EDITAR */}
-        <section className="admin-panel">
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              marginBottom: "0.75rem",
-            }}
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'stretch', maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
+          <button
+            className="btn-primary"
+            style={{ minWidth: 180 }}
+            onClick={() => navigate('/admin/servicios/crear')}
           >
-            <h2>{editingId ? "Editar servicio" : "Crear servicio"}</h2>
-            {editingId && (
-              <button
-                type="button"
-                onClick={resetForm}
-                style={{
-                  fontSize: "0.8rem",
-                  borderRadius: "999px",
-                  padding: "0.3rem 0.75rem",
-                  border: "1px solid #bfdbfe",
-                  background: "#eff6ff",
-                  color: "#1d4ed8",
-                  cursor: "pointer",
-                }}
-              >
-                + Nuevo servicio
-              </button>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmit} className="admin-form">
-            <div className="form-group">
-              <label>Nombre del servicio</label>
-              <input
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Descripción corta</label>
-              <textarea
-                rows={2}
-                value={descripcion}
-                onChange={(e) => setDescripcion(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Costo (DOP)</label>
-              <input
-                type="number"
-                min="0"
-                step="0.01"
-                value={costo}
-                onChange={(e) => setCosto(e.target.value)}
-              />
-            </div>
-
-            {/* Checkbox más estético: requiere pago */}
-            <div className="form-group form-group-inline">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={requierePago}
-                  onChange={(e) => setRequierePago(e.target.checked)}
-                />
-                <span>Requiere pago</span>
-              </label>
-            </div>
-
-            {/* Checkbox más estético: servicio activo */}
-            <div className="form-group form-group-inline">
-              <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={activo}
-                  onChange={(e) => setActivo(e.target.checked)}
-                />
-                <span>Servicio activo</span>
-              </label>
-            </div>
-
-            <div className="form-group">
-              <label>Formulario base (PDF)</label>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => setFormularioFile(e.target.files[0] || null)}
-              />
-              <small>
-                Por ahora solo se guardará el nombre del archivo como ruta base.
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label>PDF de información del servicio (opcional)</label>
-              <input
-                type="file"
-                accept="application/pdf"
-                onChange={(e) => setInfoFile(e.target.files[0] || null)}
-              />
-              <small>
-                Se añadirá como requisito “PDF informativo: nombreArchivo.pdf”.
-              </small>
-            </div>
-
-            <div className="form-group">
-              <label>Requisitos adicionales (uno por línea)</label>
-              <textarea
-                rows={4}
-                placeholder={
-                  "Formulario LI-UPC-01 firmado\nRegistro Mercantil\nCopia de cédula del representante legal"
-                }
-                value={requisitosTexto}
-                onChange={(e) => setRequisitosTexto(e.target.value)}
-              />
-            </div>
-
-            <button type="submit" className="btn-primary" disabled={loading}>
-              {loading
-                ? "Guardando..."
-                : editingId
-                ? "Guardar cambios"
-                : "Crear servicio"}
-            </button>
-          </form>
-        </section>
-
-        {/* Columna derecha: lista de servicios con acciones */}
-        <section className="admin-panel">
-          <h2>Servicios configurados</h2>
-
-          {loading && <p>Cargando servicios...</p>}
-
-          {!loading && servicios.length === 0 && (
-            <p style={{ color: "#6b7280" }}>
-              No hay servicios configurados aún.
-            </p>
-          )}
-
-          {!loading && servicios.length > 0 && (
-            <div className="service-list">
+            + Crear nuevo servicio
+          </button>
+        </div>
+        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 4px #0001', padding: 24, minWidth: 900 }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f3f4f6' }}>
+                <th style={{ textAlign: 'left', padding: '8px 12px' }}>Nombre</th>
+                <th style={{ textAlign: 'left', padding: '8px 12px' }}>Descripción</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px' }}>Costo</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px' }}>Pago</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px' }}>Activo</th>
+                <th style={{ textAlign: 'center', padding: '8px 12px' }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
               {servicios.map((s) => (
-                <div key={s.id} className="service-item">
-                  <div className="service-main">
-                    <div className="service-title">{s.nombre}</div>
-                    <div className="service-description">
-                      {s.descripcion}
-                    </div>
-                    <div className="service-meta">
-                      <span>
-                        <strong>Costo:</strong> {s.costo} DOP
-                      </span>
-                      <span>
-                        <strong>Pago:</strong>{" "}
-                        {s.requierePago ? "Requerido" : "No requerido"}
-                      </span>
-                      <span>
-                        <strong>Activo:</strong> {s.activo ? "Sí" : "No"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="service-actions">
+                <tr key={s.id ?? s.Id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                  <td style={{ padding: '8px 12px', fontWeight: 500 }}>{s.nombre ?? s.Nombre}</td>
+                  <td style={{ padding: '8px 12px', color: '#374151' }}>{s.descripcion ?? s.Descripcion}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>{s.costo ?? s.Costo ?? 0} DOP</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>{(s.requierePago ?? s.RequierePago) ? 'Sí' : 'No'}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>{(s.activo ?? s.Activo) ? 'Sí' : 'No'}</td>
+                  <td style={{ padding: '8px 12px', textAlign: 'center' }}>
                     <button
-                      type="button"
-                      onClick={() => startEdit(s)}
-                      className="service-btn-edit"
+                      style={{
+                        marginRight: 8,
+                        background: '#16a34a',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '7px 24px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        height: 38,
+                        minWidth: 90,
+                        fontSize: 15
+                      }}
+                      onClick={() => navigate(`/admin/servicios/editar/${s.id ?? s.Id}`)}
                     >
                       Editar
                     </button>
                     <button
-                      type="button"
-                      onClick={() => handleEliminarServicio(s.id)}
-                      className="service-btn-delete"
+                      style={{
+                        background: '#dc2626',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 6,
+                        padding: '7px 24px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        height: 38,
+                        minWidth: 90,
+                        fontSize: 15
+                      }}
+                      onClick={() => handleEliminarServicio(s.id ?? s.Id)}
                     >
                       Eliminar
                     </button>
-                  </div>
-                </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-          )}
-        </section>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
