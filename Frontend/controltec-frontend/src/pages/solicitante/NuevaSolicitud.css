@@ -1,333 +1,237 @@
 /* src/pages/solicitante/NuevaSolicitud.css */
 
 :root {
-    --ns-primary: #289c2e;
-    --ns-primary-dark: #1e7a23;
-    --ns-bg: #f9fafb;
-    --ns-text: #111827;
-    --ns-text-muted: #6b7280;
-    --ns-white: #ffffff;
-    --ns-border: #e5e7eb;
-    --ns-radius: 12px;
-    --ns-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --ns-primary: #289c2e;
+  --ns-primary-dark: #1e7a23;
+  --ns-bg: #f4f7f6;
+  --ns-text: #111827;
+  --ns-text-muted: #6b7280;
+  --ns-white: #ffffff;
+  --ns-border: #e5e7eb;
+  --ns-radius: 16px;
+  --ns-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
 }
 
 .ns-page-container {
-    padding: 2rem 2rem;
-    background-color: var(--ns-bg);
-    min-height: calc(100vh - 64px);
-    font-family: 'Segoe UI', system-ui, sans-serif;
+  padding: 2rem;
+  background-color: var(--ns-bg);
+  min-height: calc(100vh - 64px);
+  font-family: 'Segoe UI', system-ui, sans-serif;
 }
 
-/* Header */
+/* ================= HEADER ================= */
+
 .ns-header-container {
-    margin-bottom: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+  margin-bottom: 2.5rem;
 }
 
 .ns-header-content {
-    opacity: 0;
-    animation: nsSlideDown 0.6s ease-out forwards;
+  animation: nsSlideDown 0.6s ease-out forwards;
 }
 
 .ns-title {
-    font-size: 2rem;
-    font-weight: 800;
-    color: #1a202c;
-    margin: 0 0 0.5rem 0;
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 .4rem;
 }
 
 .ns-subtitle {
-    font-size: 1rem;
-    color: var(--ns-text-muted);
-    margin: 0;
+  font-size: 1rem;
+  color: var(--ns-text-muted);
 }
 
-/* Service Card */
-.ns-card {
-    background: var(--ns-white);
-    border-radius: var(--ns-radius);
-    border: 1px solid var(--ns-border);
-    box-shadow: var(--ns-shadow);
-    padding: 1.5rem 2rem;
-    margin-bottom: 1.5rem;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+/* ================= GRID ================= */
 
-    /* Animation */
-    opacity: 0;
-    animation: nsCardEnter 0.6s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+.ns-services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.75rem;
+}
+
+@media (max-width: 1100px) {
+  .ns-services-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================= CARD ================= */
+
+.ns-card {
+  background: var(--ns-white);
+  border-radius: var(--ns-radius);
+  border: 1px solid var(--ns-border);
+  box-shadow: var(--ns-shadow);
+  padding: 1.4rem 1.4rem 1.2rem;
+  position: relative;
+
+  opacity: 0;
+  animation: nsCardEnter .55s cubic-bezier(.2,1,.2,1) forwards;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.ns-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--ns-primary), #34d399);
 }
 
 .ns-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-4px);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  border-color: rgba(40,156,46,.4);
 }
 
 .ns-card-header {
-    margin-bottom: 1rem;
-    border-bottom: 1px solid var(--ns-border);
-    padding-bottom: 0.75rem;
+  margin-bottom: .75rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--ns-border);
 }
 
 .ns-card-title {
-    font-size: 1.25rem;
-    font-weight: 700;
-    color: #111827;
-    margin: 0;
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: .25rem 0;
 }
 
-/* Grid Layout for Max Horizontal Space */
-.ns-card-grid {
-    display: grid;
-    grid-template-columns: 2fr 1.5fr 1fr;
-    /* Wide Description | Requirements | Actions */
-    gap: 2rem;
-    align-items: start;
+/* ================= CONTENT ================= */
+
+.ns-desc {
+  font-size: .95rem;
+  color: #4b5563;
+  line-height: 1.55;
+  margin-bottom: 1rem;
 }
 
-/* Columns */
-.ns-col-desc {
-    font-size: 0.95rem;
-    color: #4b5563;
-    line-height: 1.6;
-}
-
-.ns-col-reqs {
-    /* border-left: 1px solid #f3f4f6; */
-    /* padding-left: 1.5rem; */
+.ns-reqbox {
+  border: 1px dashed rgba(17,24,39,.2);
+  border-radius: 14px;
+  background: #f9fafb;
+  padding: 1rem;
+  margin-bottom: 1.1rem;
 }
 
 .ns-reqs-title {
-    font-size: 0.9rem;
-    font-weight: 700;
-    color: #374151;
-    text-transform: uppercase;
-    margin: 0 0 0.5rem 0;
+  font-size: .8rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: var(--ns-primary-dark);
+  margin-bottom: .6rem;
 }
 
 .ns-reqs-list {
-    margin: 0;
-    padding-left: 1.25rem;
-    font-size: 0.9rem;
-    color: #4b5563;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: .45rem;
 }
 
 .ns-reqs-list li {
-    margin-bottom: 0.25rem;
+  display: flex;
+  gap: .5rem;
+  font-size: .9rem;
+  color: #374151;
 }
 
-.ns-col-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    /* border-left: 1px solid #f3f4f6; */
-    /* padding-left: 1.5rem; */
-    height: 100%;
+.ns-reqs-list li::before {
+  content: "✓";
+  color: var(--ns-primary-dark);
+  font-weight: 900;
 }
 
-/* Buttons */
+/* ================= BUTTONS ================= */
+
+.ns-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .8rem;
+}
+
 .ns-btn {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    text-align: center;
-    border: none;
+  border-radius: 12px;
+  padding: .75rem 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: all .18s ease;
 }
 
 .ns-btn-primary {
-    background-color: var(--ns-primary);
-    color: white;
+  background: var(--ns-primary);
+  color: #fff;
 }
 
 .ns-btn-primary:hover {
-    background-color: var(--ns-primary-dark);
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(40, 156, 46, 0.3);
+  background: var(--ns-primary-dark);
+  box-shadow: 0 12px 20px rgba(40,156,46,.25);
+  transform: translateY(-1px);
 }
 
 .ns-btn-outline {
-    background-color: transparent;
-    border: 1px solid #d1d5db;
-    color: #374151;
-    font-size: 0.85rem;
-    padding: 0.5rem 1rem;
+  background: #fff;
+  border: 1px solid #d1d5db;
 }
 
 .ns-btn-outline:hover {
-    border-color: #9ca3af;
-    background-color: #f9fafb;
+  background: #f3f4f6;
 }
 
 .ns-btn-danger {
-    background-color: #ef4444;
-    color: white;
+  background: #fff;
+  border: 1px solid #ef4444;
+  color: #b91c1c;
 }
 
 .ns-btn-danger:hover {
-    background-color: #dc2626;
+  background: #fee2e2;
 }
 
-.ns-btn-disabled {
-    background-color: #e5e7eb;
-    color: #9ca3af;
-    cursor: not-allowed;
-    transform: none !important;
-    box-shadow: none !important;
+.ns-btn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
-/* Upload Section (Expanded) */
+/* ================= UPLOAD ================= */
+
 .ns-upload-section {
-    margin-top: 1.5rem;
-    padding-top: 1.5rem;
-    border-top: 1px dashed var(--ns-border);
-    animation: nsExpand 0.4s ease-out forwards;
+  margin-top: 1rem;
+  animation: nsExpand .3s ease-out;
 }
 
 .ns-dropzone {
-    border: 2px dashed #9ca3af;
-    border-radius: var(--ns-radius);
-    padding: 2rem;
-    background: #f8fafc;
-    text-align: center;
-    margin-bottom: 1.5rem;
-    transition: all 0.2s;
-    cursor: pointer;
-}
-
-.ns-dropzone:hover {
-    border-color: var(--ns-primary);
-    background: #f0fdf4;
-}
-
-.ns-dropzone-text {
-    color: #64748b;
-    font-size: 0.95rem;
-}
-
-.ns-file-list {
-    list-style: none;
-    padding: 0;
-    margin-top: 0.5rem;
+  border: 1px dashed rgba(40,156,46,.5);
+  background: rgba(40,156,46,.05);
+  border-radius: 14px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
 }
 
 .ns-file-item {
-    background: #e2e8f0;
-    padding: 0.25rem 0.75rem;
-    border-radius: 4px;
-    display: inline-block;
-    margin: 0.25rem;
-    font-size: 0.85rem;
-    color: #475569;
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: .3rem .6rem;
+  font-size: .8rem;
+  display: inline-block;
+  margin: .25rem;
 }
 
-.ns-upload-actions {
-    display: flex;
-    gap: 1rem;
-    justify-content: flex-end;
-}
+/* ================= ANIMATIONS ================= */
 
-/* Loading / Empty / Error */
-.ns-status-msg {
-    text-align: center;
-    padding: 3rem;
-    color: var(--ns-text-muted);
-    font-size: 1.1rem;
-}
-
-.ns-error-msg {
-    color: #e53e3e;
-    background: #fff5f5;
-    padding: 1rem;
-    border-radius: 8px;
-    border: 1px solid #feb2b2;
-    margin-bottom: 1rem;
-}
-
-/* Animations */
 @keyframes nsSlideDown {
-    from {
-        transform: translateY(-20px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes nsCardEnter {
-    from {
-        transform: translateY(40px);
-        opacity: 0;
-    }
-
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes nsExpand {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Stagger Delays */
-.ns-card:nth-child(1) {
-    animation-delay: 0.1s;
-}
-
-.ns-card:nth-child(2) {
-    animation-delay: 0.2s;
-}
-
-.ns-card:nth-child(3) {
-    animation-delay: 0.3s;
-}
-
-.ns-card:nth-child(4) {
-    animation-delay: 0.4s;
-}
-
-.ns-card:nth-child(5) {
-    animation-delay: 0.5s;
-}
-
-.ns-card:nth-child(n+6) {
-    animation-delay: 0.6s;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-    .ns-card-grid {
-        grid-template-columns: 1fr;
-        gap: 1.5rem;
-    }
-
-    .ns-col-actions {
-        flex-direction: row;
-        flex-wrap: wrap;
-    }
-
-    .ns-btn {
-        width: auto;
-        flex: 1;
-    }
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }

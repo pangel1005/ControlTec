@@ -4,65 +4,110 @@ import { useParams, useNavigate } from "react-router-dom";
 import api from "../../api/apiClient";
 import { useAuth } from "../../context/AuthContext";
 
-import { useEffect as useEffectReact, useState as useStateReact } from "react";
+import "./SolicitudDetalle.css";
+
 
 function FormularioDigitalDetalle({ solicitudId }) {
-  const [respuestas, setRespuestas] = useStateReact(null);
-  const [estructura, setEstructura] = useStateReact(null);
-  const [loading, setLoading] = useStateReact(true);
-  const [error, setError] = useStateReact("");
+  const [respuestas, setRespuestas] = useState(null);
+  const [estructura, setEstructura] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  useEffectReact(() => {
+  useEffect(() => {
     let cancelado = false;
+
     async function cargar() {
       setLoading(true);
       setError("");
+
       try {
-        // 1. Obtener respuestas del formulario digital
-        const respRes = await api.get(`/api/RespuestasFormulariosDigitales/solicitud/${solicitudId}`);
+        // 1) Obtener respuestas del formulario digital
+        const respRes = await api.get(
+          `/api/RespuestasFormulariosDigitales/solicitud/${solicitudId}`
+        );
+
         if (!respRes.data) {
-          setRespuestas(null);
-          setEstructura(null);
-          setLoading(false);
+          if (!cancelado) {
+            setRespuestas(null);
+            setEstructura(null);
+          }
           return;
         }
-        setRespuestas(respRes.data.respuestasJson ? JSON.parse(respRes.data.respuestasJson) : {});
-        // 2. Obtener estructura del formulario digital
+
+        const respJson = respRes.data.respuestasJson
+          ? JSON.parse(respRes.data.respuestasJson)
+          : {};
+
+        if (!cancelado) setRespuestas(respJson);
+
+        // 2) Obtener estructura del formulario digital
         if (respRes.data.formularioDigitalId) {
-          const formRes = await api.get(`/api/FormulariosDigitales/${respRes.data.formularioDigitalId}`);
-          setEstructura(formRes.data.estructuraJson ? JSON.parse(formRes.data.estructuraJson) : {});
+          const formRes = await api.get(
+            `/api/FormulariosDigitales/${respRes.data.formularioDigitalId}`
+          );
+          const estructuraJson = formRes.data?.estructuraJson
+            ? JSON.parse(formRes.data.estructuraJson)
+            : {};
+          if (!cancelado) setEstructura(estructuraJson);
         } else {
-          setEstructura(null);
+          if (!cancelado) setEstructura(null);
         }
       } catch (err) {
-        setError("No se pudo cargar los datos del formulario digital.");
-        setRespuestas(null);
-        setEstructura(null);
+        console.error(err);
+        if (!cancelado) {
+          setError("No se pudo cargar los datos del formulario digital.");
+          setRespuestas(null);
+          setEstructura(null);
+        }
       } finally {
         if (!cancelado) setLoading(false);
       }
     }
+
     cargar();
-    return () => { cancelado = true; };
+    return () => {
+      cancelado = true;
+    };
   }, [solicitudId]);
 
-  if (loading) return <p>Cargando datos del formulario digital...</p>;
-  if (error) return <p className="detalle-muted">{error}</p>;
-  if (!estructura || !estructura.campos || estructura.campos.length === 0)
-    return <p className="detalle-muted">No hay datos del formulario digital para esta solicitud.</p>;
+  if (loading) return <p className="sd-card-note">Cargando datos del formulario digital...</p>;
+  if (error) return <p className="sd-card-note">{error}</p>;
+
+  const campos = estructura?.campos || [];
+  if (!estructura || !Array.isArray(campos) || campos.length === 0) {
+    return (
+      <p className="sd-card-note">
+        No hay datos del formulario digital para esta solicitud.
+      </p>
+    );
+  }
+
   return (
-    <ul className="detalle-form-list">
-      {estructura.campos.map((campo, idx) => (
-        <li key={campo.nombre || idx} style={{ marginBottom: 8 }}>
-          <strong>{campo.etiqueta || campo.nombre}:</strong>{" "}
-          {campo.tipo === "checkbox"
-            ? (respuestas && respuestas[campo.nombre] ? "Sí" : "No")
-            : (respuestas && respuestas[campo.nombre] !== undefined && respuestas[campo.nombre] !== null && respuestas[campo.nombre] !== "")
-              ? respuestas[campo.nombre]
-              : <span style={{ color: '#6b7280' }}>[Sin dato]</span>}
-        </li>
-      ))}
-    </ul>
+    <div className="sd-info-grid">
+      {campos.map((campo, idx) => {
+        const key = campo?.nombre || idx;
+        const label = campo?.etiqueta || campo?.nombre || `Campo ${idx + 1}`;
+
+        const valor =
+          campo?.tipo === "checkbox"
+            ? respuestas && respuestas[campo.nombre]
+              ? "Sí"
+              : "No"
+            : respuestas &&
+              respuestas[campo.nombre] !== undefined &&
+              respuestas[campo.nombre] !== null &&
+              respuestas[campo.nombre] !== ""
+            ? respuestas[campo.nombre]
+            : null;
+
+        return (
+          <dl key={key} className="sd-kv">
+            <dt>{label}:</dt>
+            <dd>{valor ?? <span style={{ color: "#6b7280" }}>[Sin dato]</span>}</dd>
+          </dl>
+        );
+      })}
+    </div>
   );
 }
 
@@ -130,12 +175,14 @@ export default function SolicitudDetalle() {
     });
   };
 
-  const getEstadoClass = (estado = "") => {
-    const e = estado.toLowerCase();
-    if (e.includes("rechaz")) return "badge badge-danger";
-    if (e.includes("devuelt")) return "badge badge-warning";
-    if (e.includes("aprob")) return "badge badge-success";
-    return "badge badge-warning";
+  const getEstadoBadgeClass = (estado = "") => {
+    const e = (estado || "").toLowerCase();
+    if (e.includes("rechaz")) return "sd-badge sd-badge--red";
+    if (e.includes("devuelt")) return "sd-badge sd-badge--yellow";
+    if (e.includes("aprob")) return "sd-badge sd-badge--green";
+    if (e.includes("deposit")) return "sd-badge sd-badge--blue";
+    if (e.includes("pend")) return "sd-badge sd-badge--yellow";
+    return "sd-badge sd-badge--blue";
   };
 
   const handleDescargarDocumento = (docId) => {
@@ -156,20 +203,20 @@ export default function SolicitudDetalle() {
     }
 
     try {
-      // 1. Subir los archivos
+      // 1) Subir los archivos
       for (const file of reuploadFiles) {
         const formData = new FormData();
         formData.append("archivo", file);
         await api.post(`/api/Solicitudes/${detalle.id}/documentos`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
+          headers: { "Content-Type": "multipart/form-data" },
         });
       }
-      // 2. Cambiar estado llamando a /enviar
+
+      // 2) Cambiar estado llamando a /enviar
       await api.post(`/api/Solicitudes/${detalle.id}/enviar`, {
-        comentario: "Documentos de Fase 2 enviados por el usuario."
+        comentario: "Documentos de Fase 2 enviados por el usuario.",
       });
+
       setReuploadFiles([]);
       await cargarDetalle();
       alert("Documentos de Fase 2 enviados correctamente.");
@@ -185,8 +232,7 @@ export default function SolicitudDetalle() {
   const esRechazada = estadoLower.includes("rechaz");
   const esAprobada = estadoLower.includes("aprob");
   const esEstadoAprobacionDNCD =
-    estadoLower.includes("aprobación dncd") ||
-    estadoLower.includes("aprobacion dncd");
+    estadoLower.includes("aprobación dncd") || estadoLower.includes("aprobacion dncd");
   const tieneCertificado = !!detalle?.rutaCertificado;
 
   // =================== ACCIONES VUS ===================
@@ -201,7 +247,6 @@ export default function SolicitudDetalle() {
     setAccionesBloqueadas(true);
     try {
       await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase1`, {});
-
       setComentarioVus("");
       await cargarDetalle();
       alert("Solicitud enviada a la siguiente revisión.");
@@ -222,9 +267,7 @@ export default function SolicitudDetalle() {
       return;
     }
 
-    const confirmado = window.confirm(
-      "¿Confirmas que la solicitud será devuelta al solicitante?"
-    );
+    const confirmado = window.confirm("¿Confirmas que la solicitud será devuelta al solicitante?");
     if (!confirmado) return;
 
     setAccionesBloqueadas(true);
@@ -260,8 +303,7 @@ export default function SolicitudDetalle() {
       await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
         estadoNuevo: "Evaluación Técnica",
         comentario:
-          comentarioUpc ||
-          "Expediente revisado por Técnico UPC. Pasa a evaluación técnica.",
+          comentarioUpc || "Expediente revisado por Técnico UPC. Pasa a evaluación técnica.",
       });
 
       setComentarioUpc("");
@@ -316,9 +358,7 @@ export default function SolicitudDetalle() {
       return;
     }
 
-    const confirmado = window.confirm(
-      "¿Confirmas que la solicitud será rechazada definitivamente?"
-    );
+    const confirmado = window.confirm("¿Confirmas que la solicitud será rechazada definitivamente?");
     if (!confirmado) return;
 
     setAccionesBloqueadas(true);
@@ -440,9 +480,7 @@ export default function SolicitudDetalle() {
       return;
     }
 
-    const confirmado = window.confirm(
-      "¿Confirmas que deseas devolver la solicitud para corrección?"
-    );
+    const confirmado = window.confirm("¿Confirmas que deseas devolver la solicitud para corrección?");
     if (!confirmado) return;
 
     setAccionesBloqueadas(true);
@@ -454,9 +492,7 @@ export default function SolicitudDetalle() {
 
       setComentarioDncd("");
       await cargarDetalle();
-      alert(
-        "Solicitud devuelta para corrección. Volverá al flujo inicial para ser revisada."
-      );
+      alert("Solicitud devuelta para corrección. Volverá al flujo inicial para ser revisada.");
     } catch (err) {
       console.error("Error al devolver como DNCD:", err);
       alert(
@@ -466,39 +502,7 @@ export default function SolicitudDetalle() {
     }
   };
 
-  const handleDncdRechazar = async () => {
-    if (!detalle) return;
-
-    if (!comentarioDncd.trim()) {
-      alert("Debes indicar el motivo del rechazo.");
-      return;
-    }
-
-    const confirmado = window.confirm(
-      "¿Confirmas que deseas rechazar definitivamente la solicitud desde DNCD?"
-    );
-    if (!confirmado) return;
-
-    setAccionesBloqueadas(true);
-    try {
-      await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
-        estadoNuevo: "Rechazada",
-        comentario: comentarioDncd,
-      });
-
-      setComentarioDncd("");
-      await cargarDetalle();
-      alert("Solicitud rechazada definitivamente por DNCD.");
-    } catch (err) {
-      console.error("Error al rechazar como DNCD:", err);
-      alert(
-        "No fue posible rechazar la solicitud. Verifica que el backend permita esta transición para el rol DNCD."
-      );
-      setAccionesBloqueadas(false);
-    }
-  };
-
-  // =================== ACCIONES DIRECCIÓN (simple) ===================
+  // =================== ACCIONES DIRECCIÓN ===================
   const handleDireccionAprobar = async () => {
     if (!detalle) return;
 
@@ -514,12 +518,9 @@ export default function SolicitudDetalle() {
         comentario: "Solicitud aprobada y firmada por Dirección.",
       });
 
-      // Generar el certificado automáticamente
       await api.post(`/api/Solicitudes/${detalle.id}/certificado`, {});
       await cargarDetalle();
-      alert(
-        "Solicitud aprobada y certificado generado. Puedes descargarlo desde el botón correspondiente."
-      );
+      alert("Solicitud aprobada y certificado generado. Puedes descargarlo desde el botón correspondiente.");
     } catch (err) {
       console.error("Error al aprobar como Dirección:", err);
       alert(
@@ -541,25 +542,25 @@ export default function SolicitudDetalle() {
   // =================== RENDER ===================
   if (loading) {
     return (
-      <div className="page-container">
-        <p>Cargando detalle de la solicitud...</p>
+      <div className="sd-page">
+        <div className="sd-container">
+          <p className="sd-card-note">Cargando detalle de la solicitud...</p>
+        </div>
       </div>
     );
   }
 
   if (error || !detalle) {
     return (
-      <div className="page-container">
-        <p className="login-error">
-          {error || "No se pudo cargar el detalle de la solicitud."}
-        </p>
-        <button
-          type="button"
-          className="btn-secondary"
-          onClick={() => navigate("/login")}
-        >
-          Volver
-        </button>
+      <div className="sd-page">
+        <div className="sd-container">
+          <div className="sd-alert sd-alert--danger">
+            {error || "No se pudo cargar el detalle de la solicitud."}
+          </div>
+          <button type="button" className="sd-btn sd-btn-outline" onClick={() => navigate("/login")}>
+            Volver
+          </button>
+        </div>
       </div>
     );
   }
@@ -576,681 +577,739 @@ export default function SolicitudDetalle() {
   else if (esDNCD) backPath = "/dncd/solicitudes";
   else if (esDireccion) backPath = "/direccion/solicitudes";
 
-  return (
-    <div className="page-container detalle-page">
-      <button
-        type="button"
-        className="btn-secondary btn-sm"
-        onClick={() => navigate(backPath)}
-      >
-        ← Volver
-      </button>
+  const servicioNombre = detalle.servicio?.nombre ?? "Sin servicio asociado";
 
-      <div className="detalle-card">
-        <div className="detalle-header">
-          <div>
-            <h1 className="detalle-title">Solicitud #{detalle.id}</h1>
-            <p className="detalle-subtitle">
-              Servicio: {detalle.servicio?.nombre ?? "Sin servicio asociado"}
-            </p>
-            {/* Indicador de fase */}
-            <div style={{ marginTop: 8 }}>
-              <span style={{
-                background: '#e0e7ff',
-                color: '#3730a3',
-                borderRadius: 6,
-                padding: '2px 10px',
-                fontWeight: 600,
-                fontSize: 14,
-              }}>
-                Fase actual: {detalle.estado}
-              </span>
-              {detalle.estado === "PendienteFase2" && (
-                <span style={{
-                  background: '#bbf7d0',
-                  color: '#166534',
-                  borderRadius: 6,
-                  padding: '2px 10px',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  marginLeft: 12,
-                }}>
-                  Puedes subir y enviar documentos de Fase 2
-                </span>
-              )}
-              {detalle.estado !== "PendienteFase2" && detalle.estado !== "Fase1Aprobada" && detalle.estado !== "DepositadaFase2" && (
-                <span style={{
-                  background: '#fee2e2',
-                  color: '#991b1b',
-                  borderRadius: 6,
-                  padding: '2px 10px',
-                  fontWeight: 600,
-                  fontSize: 14,
-                  marginLeft: 12,
-                }}>
-                  Solo podrás subir documentos cuando la solicitud esté en Fase 2
-                </span>
-              )}
-            </div>
+  return (
+    <div className="sd-page">
+      <div className="sd-container">
+        <button
+          type="button"
+          className="sd-btn sd-btn-outline"
+          onClick={() => navigate(backPath)}
+          style={{ marginBottom: 12 }}
+        >
+          ← Volver
+        </button>
+
+        {/* HEADER */}
+        <div className="sd-header">
+          <div className="sd-title-wrap">
+            <h1 className="sd-title">Solicitud #{detalle.id}</h1>
+            <p className="sd-subtitle">Servicio: {servicioNombre}</p>
           </div>
 
-          <span className={getEstadoClass(detalle.estado)}>
-            {detalle.estado}
-          </span>
+          <div className="sd-header-right">
+            <span className={getEstadoBadgeClass(detalle.estado)}>{detalle.estado}</span>
+          </div>
         </div>
 
-        <div className="detalle-grid">
-          {/* Información básica */}
-          <section className="detalle-section">
-            <h2 className="detalle-section-title">Información general</h2>
-            <p>
-              <strong>Fecha de creación:</strong>{" "}
-              {formatFecha(detalle.fechaCreacion)}
-            </p>
-            <p>
-              <strong>Usuario:</strong> {detalle.usuario?.nombre} (
-              {detalle.usuario?.correo})
-            </p>
-            <p>
-              <strong>Descripción del servicio:</strong>
-            </p>
-            <p className="detalle-servicio-descripcion">
-              {detalle.servicio?.descripcion ?? "Este servicio no tiene descripción registrada."}
-            </p>
-          </section>
+        {/* ALERTS FASE */}
+        {detalle.estado === "PendienteFase2" && (
+          <div className="sd-alert sd-alert--info">
+            <strong>Fase actual:</strong> {detalle.estado} — Puedes subir y enviar documentos de Fase 2.
+          </div>
+        )}
 
-          {/* Detalles del formulario digital */}
-          <section className="detalle-section">
-            <h2 className="detalle-section-title">Detalles del formulario digital</h2>
-            <FormularioDigitalDetalle solicitudId={detalle.id} />
-          </section>
+        {detalle.estado !== "PendienteFase2" &&
+          detalle.estado !== "Fase1Aprobada" &&
+          detalle.estado !== "DepositadaFase2" && (
+            <div className="sd-alert sd-alert--warn">
+              <strong>Fase actual:</strong> {detalle.estado} — Solo podrás subir documentos cuando la solicitud esté en Fase 2.
+            </div>
+          )}
 
-          {/* Requerimientos */}
-          <section className="detalle-section">
-            <h2 className="detalle-section-title">Documentos requeridos</h2>
-            {documentosRequeridos.length === 0 ? (
-              <p className="detalle-muted">
-                Este servicio aún no tiene requerimientos configurados.
-              </p>
-            ) : (
-              <ul className="detalle-list">
-                {documentosRequeridos.map((req) => (
-                  <li key={req.id}>{req.nombre}</li>
-                ))}
-              </ul>
-            )}
-          </section>
+        {/* LAYOUT PRINCIPAL */}
+        <div className="sd-layout">
+          {/* COLUMNA IZQUIERDA */}
+          <div className="sd-col">
+            {/* INFO GENERAL */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Información general</h2>
+              </div>
+              <div className="sd-card-body">
+                <div className="sd-info-grid">
+                  <dl className="sd-kv">
+                    <dt>Fecha de creación:</dt>
+                    <dd>{formatFecha(detalle.fechaCreacion)}</dd>
+                  </dl>
 
-          {/* Documentos cargados */}
-          <section className="detalle-section">
-            <h2 className="detalle-section-title">Documentos cargados</h2>
-            {documentosCargados.length === 0 ? (
-              <p className="detalle-muted">
-                Todavía no se han cargado documentos para esta solicitud.
-              </p>
-            ) : (
-              <ul className="detalle-doc-list">
-                {documentosCargados.map((doc) => (
-                  <li key={doc.id} className="detalle-doc-item">
-                    <div>
-                      <strong>{doc.nombre}</strong>
-                      <div className="detalle-doc-meta">
-                        {doc.tipo || "application/pdf"}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-secondary btn-sm"
-                      onClick={() => handleDescargarDocumento(doc.id)}
-                    >
-                      Descargar
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
+                  <dl className="sd-kv">
+                    <dt>Usuario:</dt>
+                    <dd>
+                      {detalle.usuario?.nombre ?? "-"} ({detalle.usuario?.correo ?? "-"})
+                    </dd>
+                  </dl>
 
-          {/* Historial */}
-          <section className="detalle-section detalle-full-width">
-            <h2 className="detalle-section-title">Historial de estados</h2>
-            {historial.length === 0 ? (
-              <p className="detalle-muted">
-                Aún no hay movimientos registrados para esta solicitud.
-              </p>
-            ) : (
-              <ul className="detalle-list">
-                {historial.map((h) => (
-                  <li key={h.id}>
-                    <strong>{formatFecha(h.fechaCambio)}:</strong>{" "}
-                    {h.estadoAnterior
-                      ? `${h.estadoAnterior} → ${h.estadoNuevo}`
-                      : h.estadoNuevo}
-                    {h.usuario && (
-                      <>
-                        {" "}
-                        — por {h.usuario.nombre} ({h.usuario.roll})
-                      </>
-                    )}
-                    {h.comentario && <> — "{h.comentario}"</>}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {/* Panel VUS */}
-          {esVus && (
-            <section className="detalle-section detalle-full-width">
-              <h2 className="detalle-section-title">Revisión VUS</h2>
-
-              <p>
-                Verifica que todos los documentos requeridos estén cargados. Si están
-                completos, puedes enviar la solicitud a la siguiente revisión. Si faltan
-                documentos, devuélvela al solicitante indicando el motivo.
-              </p>
-
-              <textarea
-                className="detalle-textarea"
-                placeholder="Comentario para el solicitante (motivo de la devolución u observaciones)..."
-                value={comentarioVus}
-                onChange={(e) => setComentarioVus(e.target.value)}
-              />
-
-              <div className="detalle-actions">
-                {/* Botón verde para servicios con fases */}
-                {detalle.estado === "DepositadaFase2" && (detalle.servicio?.id === 4 || detalle.servicio?.id === 5) ? (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={async () => {
-                      setAccionesBloqueadas(true);
-                      try {
-                        await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase2`, {});
-                        setComentarioVus("");
-                        await cargarDetalle();
-                        alert("Fase 2 aprobada. El flujo continúa con el Técnico UPC.");
-                      } catch (err) {
-                        console.error("Error al aprobar Fase 2 como VUS:", err);
-                        alert("No fue posible aprobar Fase 2. Verifica que el backend permita esta transición.");
-                        setAccionesBloqueadas(false);
-                      }
-                    }}
-                    disabled={accionesBloqueadas}
-                  >
-                    Aprobar Fase 2
-                  </button>
-                ) : detalle.estado === "DepositadaFase2" && detalle.servicio?.id !== 4 && detalle.servicio?.id !== 5 ? (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={async () => {
-                      setAccionesBloqueadas(true);
-                      try {
-                        await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase2`, {});
-                        setComentarioVus("");
-                        await cargarDetalle();
-                        alert("Fase 2 aprobada. La solicitud pasa a Validación Recepción.");
-                      } catch (err) {
-                        console.error("Error al aprobar Fase 2 como VUS:", err);
-                        alert("No fue posible aprobar Fase 2. Verifica que el backend permita esta transición.");
-                        setAccionesBloqueadas(false);
-                      }
-                    }}
-                    disabled={accionesBloqueadas}
-                  >
-                    Aprobar y pasar a Validación Recepción
-                  </button>
-                ) : detalle.estado === "Depositada" && detalle.servicio?.id === 1 ? (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={async () => {
-                      setAccionesBloqueadas(true);
-                      try {
-                        await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
-                          estadoNuevo: "Validación Recepción",
-                          comentario: comentarioVus
-                        });
-                        setComentarioVus("");
-                        await cargarDetalle();
-                        alert("Solicitud aprobada y enviada a Validación Recepción.");
-                      } catch (err) {
-                        console.error("Error al aprobar solicitud como VUS:", err);
-                        alert("No fue posible aprobar la solicitud. Verifica que el backend permita esta transición.");
-                        setAccionesBloqueadas(false);
-                      }
-                    }}
-                    disabled={accionesBloqueadas}
-                  >
-                    Aprobar solicitud
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={handleVusAprobar}
-                    disabled={accionesBloqueadas}
-                  >
-                    Aprobar Fase 1
-                  </button>
-                )}
-
-                <button
-                  type="button"
-                  className="btn-warning"
-                  onClick={handleVusRechazar}
-                  disabled={accionesBloqueadas}
-                >
-                  Devolver al solicitante para corrección
-                </button>
+                  <dl className="sd-kv">
+                    <dt>Descripción:</dt>
+                    <dd>{detalle.servicio?.descripcion ?? "Este servicio no tiene descripción registrada."}</dd>
+                  </dl>
+                </div>
               </div>
             </section>
-)}
+
+            {/* DOCUMENTOS REQUERIDOS */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Documentos requeridos</h2>
+              </div>
+              <div className="sd-card-body">
+                {documentosRequeridos.length === 0 ? (
+                  <p className="sd-card-note">Este servicio aún no tiene requerimientos configurados.</p>
+                ) : (
+                  <ul className="sd-list sd-list--checks">
+                    {documentosRequeridos.map((req) => (
+                      <li key={req.id}>{req.nombre}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+
+            {/* HISTORIAL */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Historial de estados</h2>
+              </div>
+              <div className="sd-card-body">
+                {historial.length === 0 ? (
+                  <p className="sd-card-note">Aún no hay movimientos registrados para esta solicitud.</p>
+                ) : (
+                  <ul className="sd-timeline">
+                    {historial.map((h, idx) => (
+                      <li key={h.id ?? `${h.fechaCambio}-${idx}`} className="sd-tl-item">
+                        <div className="sd-tl-top">
+                          <span className="sd-tl-state">
+                            {h.estadoAnterior ? `${h.estadoAnterior} → ${h.estadoNuevo}` : h.estadoNuevo}
+                          </span>
+                          <span className="sd-tl-date">{formatFecha(h.fechaCambio)}</span>
+                        </div>
+
+                        <p className="sd-tl-note">
+                          {h.usuario ? (
+                            <>
+                              — por <strong>{h.usuario.nombre}</strong> ({h.usuario.roll})
+                            </>
+                          ) : null}
+                          {h.comentario ? <> — "{h.comentario}"</> : null}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </section>
+          </div>
+
+          {/* COLUMNA DERECHA */}
+          <div className="sd-col">
+            {/* FORMULARIO DIGITAL */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Detalles del formulario digital</h2>
+              </div>
+              <div className="sd-card-body">
+                <FormularioDigitalDetalle solicitudId={detalle.id} />
+              </div>
+            </section>
+
+            {/* DOCUMENTOS CARGADOS */}
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Documentos cargados</h2>
+              </div>
+              <div className="sd-card-body">
+                {documentosCargados.length === 0 ? (
+                  <p className="sd-card-note">Todavía no se han cargado documentos para esta solicitud.</p>
+                ) : (
+                  <div className="sd-docs">
+                    {documentosCargados.map((doc) => (
+                      <div key={doc.id} className="sd-doc-row">
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div className="sd-doc-name">{doc.nombre}</div>
+                          <div className="sd-doc-meta">{doc.tipo || "application/pdf"}</div>
+                        </div>
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-outline"
+                          onClick={() => handleDescargarDocumento(doc.id)}
+                        >
+                          Descargar
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </div>
+
+        {/* =================== ACCIONES (FULL WIDTH) =================== */}
+        <div style={{ marginTop: "1rem" }}>
+          {/* Panel VUS */}
+          {esVus && (
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Revisión VUS</h2>
+              </div>
+
+              <div className="sd-card-body">
+                <p className="sd-actions-help">
+                  Verifica que todos los documentos requeridos estén cargados. Si están completos, aprueba.
+                  Si faltan documentos, devuélvela al solicitante indicando el motivo.
+                </p>
+
+                <textarea
+                  placeholder="Comentario para el solicitante (motivo de la devolución u observaciones)..."
+                  value={comentarioVus}
+                  onChange={(e) => setComentarioVus(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 110,
+                    marginTop: 10,
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                  }}
+                />
+
+                <div className="sd-actions" style={{ marginTop: 12 }}>
+                  <div className="sd-actions-row">
+                    {/* Botón verde para servicios con fases */}
+                    {detalle.estado === "DepositadaFase2" &&
+                    (detalle.servicio?.id === 4 || detalle.servicio?.id === 5) ? (
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        onClick={async () => {
+                          setAccionesBloqueadas(true);
+                          try {
+                            await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase2`, {});
+                            setComentarioVus("");
+                            await cargarDetalle();
+                            alert("Fase 2 aprobada. El flujo continúa con el Técnico UPC.");
+                          } catch (err) {
+                            console.error("Error al aprobar Fase 2 como VUS:", err);
+                            alert("No fue posible aprobar Fase 2. Verifica que el backend permita esta transición.");
+                            setAccionesBloqueadas(false);
+                          }
+                        }}
+                        disabled={accionesBloqueadas}
+                      >
+                        Aprobar Fase 2
+                      </button>
+                    ) : detalle.estado === "DepositadaFase2" &&
+                      detalle.servicio?.id !== 4 &&
+                      detalle.servicio?.id !== 5 ? (
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        onClick={async () => {
+                          setAccionesBloqueadas(true);
+                          try {
+                            await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase2`, {});
+                            setComentarioVus("");
+                            await cargarDetalle();
+                            alert("Fase 2 aprobada. La solicitud pasa a Validación Recepción.");
+                          } catch (err) {
+                            console.error("Error al aprobar Fase 2 como VUS:", err);
+                            alert("No fue posible aprobar Fase 2. Verifica que el backend permita esta transición.");
+                            setAccionesBloqueadas(false);
+                          }
+                        }}
+                        disabled={accionesBloqueadas}
+                      >
+                        Aprobar y pasar a Validación Recepción
+                      </button>
+                    ) : detalle.estado === "Depositada" && detalle.servicio?.id === 1 ? (
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        onClick={async () => {
+                          setAccionesBloqueadas(true);
+                          try {
+                            await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+                              estadoNuevo: "Validación Recepción",
+                              comentario: comentarioVus,
+                            });
+                            setComentarioVus("");
+                            await cargarDetalle();
+                            alert("Solicitud aprobada y enviada a Validación Recepción.");
+                          } catch (err) {
+                            console.error("Error al aprobar solicitud como VUS:", err);
+                            alert("No fue posible aprobar la solicitud. Verifica que el backend permita esta transición.");
+                            setAccionesBloqueadas(false);
+                          }
+                        }}
+                        disabled={accionesBloqueadas}
+                      >
+                        Aprobar solicitud
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        onClick={handleVusAprobar}
+                        disabled={accionesBloqueadas}
+                      >
+                        Aprobar Fase 1
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-outline"
+                      onClick={handleVusRechazar}
+                      disabled={accionesBloqueadas}
+                    >
+                      Devolver al solicitante
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
           {/* Panel Técnico UPC */}
           {esTecnicoUPC && (
-            <section className="detalle-section detalle-full-width">
-              <h2 className="detalle-section-title">Revisión Técnico UPC</h2>
-              <p>
-                Revisa el expediente recibido. Si cumple con los requisitos,
-                envíalo a evaluación técnica detallada. Si hay observaciones,
-                puedes devolverlo al solicitante o rechazarlo.
-              </p>
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Revisión Técnico UPC</h2>
+              </div>
 
-              <textarea
-                className="detalle-textarea"
-                placeholder="Comentario para el comunicado de rechazo (Dirección lo firmará y lo enviará al usuario)..."
-                value={comentarioUpc}
-                onChange={(e) => setComentarioUpc(e.target.value)}
-              />
+              <div className="sd-card-body">
+                <p className="sd-actions-help">
+                  Revisa el expediente recibido. Si cumple con los requisitos, envíalo a evaluación técnica.
+                  Si hay observaciones, puedes devolverlo al solicitante o rechazarlo.
+                </p>
 
-              <div className="detalle-actions">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleUpcAprobar}
-                  disabled={accionesBloqueadas}
-                >
-                  Enviar a evaluación técnica
-                </button>
+                <textarea
+                  placeholder="Comentario para el comunicado de rechazo (Dirección lo firmará y lo enviará al usuario)..."
+                  value={comentarioUpc}
+                  onChange={(e) => setComentarioUpc(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 110,
+                    marginTop: 10,
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                  }}
+                />
 
-                <button
-                  type="button"
-                  className="btn-warning"
-                  onClick={handleUpcDevolver}
-                  disabled={accionesBloqueadas}
-                >
-                  Devolver al solicitante para corrección
-                </button>
+                <div className="sd-actions" style={{ marginTop: 12 }}>
+                  <div className="sd-actions-row">
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-primary"
+                      onClick={handleUpcAprobar}
+                      disabled={accionesBloqueadas}
+                    >
+                      Enviar a evaluación técnica
+                    </button>
 
-                <button
-                  type="button"
-                  className="btn-danger"
-                  title="Este rechazo enviará la solicitud a Dirección para que firmen y comuniquen el rechazo al usuario."
-                  onClick={handleUpcRechazar}
-                  disabled={accionesBloqueadas}
-                >
-                  Rechazar y enviar a Dirección para comunicado
-                </button>
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-outline"
+                      onClick={handleUpcDevolver}
+                      disabled={accionesBloqueadas}
+                    >
+                      Devolver al solicitante
+                    </button>
+
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-danger"
+                      title="Este rechazo enviará la solicitud a Dirección para que firmen y comuniquen el rechazo al usuario."
+                      onClick={handleUpcRechazar}
+                      disabled={accionesBloqueadas}
+                    >
+                      Rechazar y enviar a Dirección
+                    </button>
+                  </div>
+                </div>
               </div>
             </section>
           )}
 
           {/* Panel Encargado UPC */}
           {esEncargadoUPC && (
-            <section className="detalle-section detalle-full-width">
-              <h2 className="detalle-section-title">Revisión Encargado UPC</h2>
-              <p>
-                Revisa el expediente evaluado. Si todo está conforme, remite la
-                solicitud a la DNCD. Si consideras que deben hacerse ajustes,
-                devuélvela al Técnico UPC con tus observaciones.
-              </p>
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Revisión Encargado UPC</h2>
+              </div>
 
-              <textarea
-                className="detalle-textarea"
-                placeholder="Comentario para DNCD o para el Técnico UPC (motivo de devolución, observaciones técnicas, etc.)..."
-                value={comentarioEncargado}
-                onChange={(e) => setComentarioEncargado(e.target.value)}
-              />
+              <div className="sd-card-body">
+                <p className="sd-actions-help">
+                  Revisa el expediente evaluado. Si todo está conforme, remite la solicitud a la DNCD.
+                  Si deben hacerse ajustes, devuélvela al Técnico UPC con tus observaciones.
+                </p>
 
-              <div className="detalle-actions">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleEncargadoRemitirDncd}
-                  disabled={accionesBloqueadas}
-                >
-                  Remitir a DNCD
-                </button>
+                <textarea
+                  placeholder="Comentario para DNCD o para el Técnico UPC (motivo de devolución, observaciones técnicas, etc.)..."
+                  value={comentarioEncargado}
+                  onChange={(e) => setComentarioEncargado(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 110,
+                    marginTop: 10,
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                  }}
+                />
 
-                <button
-                  type="button"
-                  className="btn-warning"
-                  onClick={handleEncargadoDevolverTecnico}
-                  disabled={accionesBloqueadas}
-                >
-                  Devolver al Técnico UPC para ajustes
-                </button>
+                <div className="sd-actions" style={{ marginTop: 12 }}>
+                  <div className="sd-actions-row">
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-primary"
+                      onClick={handleEncargadoRemitirDncd}
+                      disabled={accionesBloqueadas}
+                    >
+                      Remitir a DNCD
+                    </button>
+
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-outline"
+                      onClick={handleEncargadoDevolverTecnico}
+                      disabled={accionesBloqueadas}
+                    >
+                      Devolver al Técnico UPC
+                    </button>
+                  </div>
+                </div>
               </div>
             </section>
           )}
 
           {/* Panel DNCD */}
           {esDNCD && (
-            <section className="detalle-section detalle-full-width">
-              <h2 className="detalle-section-title">Revisión DNCD</h2>
-              <p>
-                Revisa las solicitudes remitidas desde la Unidad de Productos
-                Controlados. Si todo está conforme, apruébalas y fírmales tu
-                conformidad. También puedes devolverlas para corrección.
-              </p>
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Revisión DNCD</h2>
+              </div>
 
-              <textarea
-                className="detalle-textarea"
-                placeholder="Comentario para Dirección o para el solicitante (motivo de devolución, observaciones)..."
-                value={comentarioDncd}
-                onChange={(e) => setComentarioDncd(e.target.value)}
-              />
+              <div className="sd-card-body">
+                <p className="sd-actions-help">
+                  Revisa las solicitudes remitidas desde la UPC. Si todo está conforme, apruébalas.
+                  También puedes devolverlas para corrección.
+                </p>
 
-              <div className="detalle-actions">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleDncdAprobar}
-                  disabled={accionesBloqueadas}
-                >
-                  Aprobar y firmar
-                </button>
+                <textarea
+                  placeholder="Comentario para Dirección o para el solicitante (motivo de devolución, observaciones)..."
+                  value={comentarioDncd}
+                  onChange={(e) => setComentarioDncd(e.target.value)}
+                  style={{
+                    width: "100%",
+                    minHeight: 110,
+                    marginTop: 10,
+                    padding: "0.8rem 0.9rem",
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    outline: "none",
+                  }}
+                />
 
-                <button
-                  type="button"
-                  className="btn-warning"
-                  onClick={handleDncdDevolver}
-                  disabled={accionesBloqueadas}
-                >
-                  Devolver para corrección
-                </button>
+                <div className="sd-actions" style={{ marginTop: 12 }}>
+                  <div className="sd-actions-row">
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-primary"
+                      onClick={handleDncdAprobar}
+                      disabled={accionesBloqueadas}
+                    >
+                      Aprobar y firmar
+                    </button>
+
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-outline"
+                      onClick={handleDncdDevolver}
+                      disabled={accionesBloqueadas}
+                    >
+                      Devolver para corrección
+                    </button>
+                  </div>
+                </div>
               </div>
             </section>
           )}
 
-          {/* Panel Dirección (simple) */}
+          {/* Panel Dirección */}
           {esDireccion && (
-            <section className="detalle-section detalle-full-width">
-              <h2 className="detalle-section-title">
-                Revisión Dirección de Productos Controlados
-              </h2>
-              <p>
-                Desde Dirección puedes revisar las solicitudes que ya cuentan
-                con la aprobación de la DNCD y decidir si se aprueban de forma
-                definitiva. Al aprobar y firmar, se habilita la posibilidad de
-                generar y consultar el certificado final.
-              </p>
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Revisión Dirección de Productos Controlados</h2>
+              </div>
 
-              {esEstadoAprobacionDNCD ? (
-                <button
-                  type="button"
-                  className="btn-primary btn-full"
-                  onClick={handleDireccionAprobar}
-                  disabled={accionesBloqueadas}
-                >
-                  Aprobar y firmar
-                </button>
-              ) : detalle.estado === "RechazadaET" ? (
-                <>
-                  <button
-                    type="button"
-                    className="btn-primary btn-full"
-                    onClick={async () => {
-                      setAccionesBloqueadas(true);
-                      try {
-                        await api.post(`/api/Solicitudes/${detalle.id}/comunicacion-rechazo`, {});
-                        await cargarDetalle();
-                        alert("Comunicado de rechazo generado y firmado. El usuario ya puede verlo.");
-                      } catch (err) {
-                        alert("No fue posible generar el comunicado de rechazo. Verifica permisos y estado actual.");
-                        setAccionesBloqueadas(false);
-                      }
-                    }}
-                    disabled={accionesBloqueadas}
-                    style={{ marginBottom: 8 }}
-                  >
-                    Firmar y generar comunicado de rechazo
-                  </button>
-                  {detalle.rutaComunicacionRechazo && (
-                    <>
-                      <button
-                        type="button"
-                        className="btn-secondary btn-full"
-                        onClick={() => {
-                          const base = api.defaults.baseURL || "";
-                          window.open(`${base}${detalle.rutaComunicacionRechazo}`, "_blank");
-                        }}
-                      >
-                        Ver comunicado de rechazo
-                      </button>
-                      <button
-                        type="button"
-                        className="btn-primary btn-full"
-                        style={{ marginTop: 8 }}
-                        onClick={() => {
-                          const base = api.defaults.baseURL || "";
-                          const link = document.createElement('a');
-                          link.href = `${base}${detalle.rutaComunicacionRechazo}`;
-                          link.download = `Notificacion_Rechazo_Solicitud_${detalle.id}.pdf`;
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                        }}
-                      >
-                        Descargar notificación de rechazo
-                      </button>
-                    </>
-                  )}
-                </>
-              ) : (
-                <p className="detalle-muted">
-                  No hay acciones disponibles para esta solicitud en este
-                  momento.
+              <div className="sd-card-body">
+                <p className="sd-actions-help">
+                  Desde Dirección puedes revisar solicitudes con aprobación DNCD y decidir si se aprueban
+                  de forma definitiva. Al aprobar, se genera el certificado final.
                 </p>
-              )}
 
-              {tieneCertificado && (
-                <div style={{ marginTop: "0.75rem" }}>
+                {esEstadoAprobacionDNCD ? (
                   <button
                     type="button"
-                    className="btn-secondary btn-full"
-                    onClick={handleVerCertificado}
+                    className="sd-btn sd-btn-primary"
+                    onClick={handleDireccionAprobar}
+                    disabled={accionesBloqueadas}
+                    style={{ width: "100%" }}
                   >
-                    Ver certificado
+                    Aprobar y firmar
                   </button>
-                </div>
-              )}
+                ) : detalle.estado === "RechazadaET" ? (
+                  <>
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-primary"
+                      onClick={async () => {
+                        setAccionesBloqueadas(true);
+                        try {
+                          await api.post(`/api/Solicitudes/${detalle.id}/comunicacion-rechazo`, {});
+                          await cargarDetalle();
+                          alert("Comunicado de rechazo generado y firmado. El usuario ya puede verlo.");
+                        } catch (err) {
+                          alert("No fue posible generar el comunicado de rechazo. Verifica permisos y estado actual.");
+                          setAccionesBloqueadas(false);
+                        }
+                      }}
+                      disabled={accionesBloqueadas}
+                      style={{ width: "100%", marginBottom: 8 }}
+                    >
+                      Firmar y generar comunicado de rechazo
+                    </button>
+
+                    {detalle.rutaComunicacionRechazo && (
+                      <>
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-outline"
+                          onClick={() => {
+                            const base = api.defaults.baseURL || "";
+                            window.open(`${base}${detalle.rutaComunicacionRechazo}`, "_blank");
+                          }}
+                          style={{ width: "100%" }}
+                        >
+                          Ver comunicado de rechazo
+                        </button>
+
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-primary"
+                          style={{ width: "100%", marginTop: 8 }}
+                          onClick={() => {
+                            const base = api.defaults.baseURL || "";
+                            const link = document.createElement("a");
+                            link.href = `${base}${detalle.rutaComunicacionRechazo}`;
+                            link.download = `Notificacion_Rechazo_Solicitud_${detalle.id}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >
+                          Descargar notificación de rechazo
+                        </button>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <p className="sd-card-note">No hay acciones disponibles para esta solicitud en este momento.</p>
+                )}
+
+                {tieneCertificado && (
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <button
+                      type="button"
+                      className="sd-btn sd-btn-outline"
+                      onClick={handleVerCertificado}
+                      style={{ width: "100%" }}
+                    >
+                      Ver certificado
+                    </button>
+                  </div>
+                )}
+              </div>
             </section>
           )}
 
+          {/* Panel Solicitante */}
           {esSolicitante && (
-            <section className="detalle-section detalle-full-width">
-              <h2 className="detalle-section-title">Acciones</h2>
+            <section className="sd-card">
+              <div className="sd-card-head">
+                <h2 className="sd-card-title">Acciones</h2>
+              </div>
 
-              {detalle.rutaCertificado && (
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={handleVerCertificado}
-                >
-                  Ver certificado
-                </button>
-              )}
+              <div className="sd-card-body">
+                <div className="sd-actions">
+                  <div className="sd-actions-row">
+                    {detalle.rutaCertificado && (
+                      <button type="button" className="sd-btn sd-btn-primary" onClick={handleVerCertificado}>
+                        Ver certificado
+                      </button>
+                    )}
 
-              {/* Certificado de rechazo (nuevo flujo) */}
-              {detalle.rutaCertificadoRechazo && (
-                <>
-                  <button
-                    type="button"
-                    className="btn-danger"
-                    onClick={() => {
-                      const base = api.defaults.baseURL || "";
-                      window.open(`${base}${detalle.rutaCertificadoRechazo}`, "_blank");
-                    }}
-                  >
-                    Ver certificado de rechazo
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ marginLeft: 8 }}
-                    onClick={() => {
-                      const base = api.defaults.baseURL || "";
-                      const link = document.createElement('a');
-                      link.href = `${base}${detalle.rutaCertificadoRechazo}`;
-                      link.download = `Certificado_Rechazo_Solicitud_${detalle.id}.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                  >
-                    Descargar certificado de rechazo
-                  </button>
-                </>
-              )}
+                    {detalle.rutaCertificadoRechazo && (
+                      <>
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-danger"
+                          onClick={() => {
+                            const base = api.defaults.baseURL || "";
+                            window.open(`${base}${detalle.rutaCertificadoRechazo}`, "_blank");
+                          }}
+                        >
+                          Ver certificado de rechazo
+                        </button>
 
-              {detalle.rutaComunicacionRechazo && (
-                <>
-                  <button
-                    type="button"
-                    className="btn-danger"
-                    onClick={() => {
-                      const base = api.defaults.baseURL || "";
-                      window.open(`${base}${detalle.rutaComunicacionRechazo}`, "_blank");
-                    }}
-                  >
-                    Ver comunicado de rechazo
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-secondary"
-                    style={{ marginLeft: 8 }}
-                    onClick={() => {
-                      const base = api.defaults.baseURL || "";
-                      // Forzar descarga en vez de solo abrir
-                      const link = document.createElement('a');
-                      link.href = `${base}${detalle.rutaComunicacionRechazo}`;
-                      link.download = `Notificacion_Rechazo_Solicitud_${detalle.id}.pdf`;
-                      document.body.appendChild(link);
-                      link.click();
-                      document.body.removeChild(link);
-                    }}
-                  >
-                    Descargar notificación de rechazo
-                  </button>
-                </>
-              )}
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-outline"
+                          onClick={() => {
+                            const base = api.defaults.baseURL || "";
+                            const link = document.createElement("a");
+                            link.href = `${base}${detalle.rutaCertificadoRechazo}`;
+                            link.download = `Certificado_Rechazo_Solicitud_${detalle.id}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >
+                          Descargar rechazo
+                        </button>
+                      </>
+                    )}
 
-              {/* SOLO permitir subir archivos cuando está DEVUELTA, no RECHAZADA */}
-              {esDevuelta && (
-                <div className="detalle-reupload">
-                  <p className="detalle-muted">
-                    La solicitud fue devuelta. Puedes adjuntar nuevos documentos
-                    para corregirla y reenviarla.
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleReuploadChange}
-                  />
-                  {reuploadFiles.length > 0 && (
-                    <ul className="detalle-list">
-                      {reuploadFiles.map((f, i) => (
-                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {f.name}
-                          <button
-                            type="button"
-                            aria-label="Eliminar archivo"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              fontSize: 18,
-                              padding: 0,
-                            }}
-                            onClick={() => setReuploadFiles(prev => prev.filter((_, idx) => idx !== i))}
-                          >
-                            ×
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                    {detalle.rutaComunicacionRechazo && (
+                      <>
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-danger"
+                          onClick={() => {
+                            const base = api.defaults.baseURL || "";
+                            window.open(`${base}${detalle.rutaComunicacionRechazo}`, "_blank");
+                          }}
+                        >
+                          Ver comunicado de rechazo
+                        </button>
+
+                        <button
+                          type="button"
+                          className="sd-btn sd-btn-outline"
+                          onClick={() => {
+                            const base = api.defaults.baseURL || "";
+                            const link = document.createElement("a");
+                            link.href = `${base}${detalle.rutaComunicacionRechazo}`;
+                            link.download = `Notificacion_Rechazo_Solicitud_${detalle.id}.pdf`;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                          }}
+                        >
+                          Descargar notificación
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Reupload cuando DEVUELTA */}
+                  {esDevuelta && (
+                    <div style={{ marginTop: 10 }}>
+                      <p className="sd-actions-help">
+                        La solicitud fue devuelta. Puedes adjuntar nuevos documentos para corregirla y reenviarla.
+                      </p>
+
+                      <input type="file" multiple onChange={handleReuploadChange} />
+
+                      {reuploadFiles.length > 0 && (
+                        <div className="sd-docs" style={{ marginTop: 10 }}>
+                          {reuploadFiles.map((f, i) => (
+                            <div key={`${f.name}-${i}`} className="sd-doc-row">
+                              <div className="sd-doc-name">{f.name}</div>
+                              <button
+                                type="button"
+                                className="sd-btn sd-btn-danger"
+                                onClick={() =>
+                                  setReuploadFiles((prev) => prev.filter((_, idx) => idx !== i))
+                                }
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        onClick={handleEnviarNuevosDocs}
+                        style={{ marginTop: 12, width: "100%" }}
+                      >
+                        Enviar nuevos documentos
+                      </button>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={handleEnviarNuevosDocs}
-                  >
-                    Enviar nuevos documentos
-                  </button>
-                </div>
-              )}
 
-              {/* Permitir subir documentos de Fase 2 solo cuando el estado es PendienteFase2 */}
-              {detalle.estado === "PendienteFase2" && (
-                <div className="detalle-reupload">
-                  <p className="detalle-muted">
-                    Adjunta los documentos requeridos para la Fase 2 y envíalos para validación del VUS.
-                  </p>
-                  <input
-                    type="file"
-                    multiple
-                    onChange={handleReuploadChange}
-                  />
-                  {reuploadFiles.length > 0 && (
-                    <ul className="detalle-list">
-                      {reuploadFiles.map((f, i) => (
-                        <li key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          {f.name}
-                          <button
-                            type="button"
-                            aria-label="Eliminar archivo"
-                            style={{
-                              background: 'none',
-                              border: 'none',
-                              color: '#ef4444',
-                              cursor: 'pointer',
-                              fontSize: 18,
-                              padding: 0,
-                            }}
-                            onClick={() => setReuploadFiles(prev => prev.filter((_, idx) => idx !== i))}
-                          >
-                            ×
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
+                  {/* Fase 2 solo cuando PendienteFase2 */}
+                  {detalle.estado === "PendienteFase2" && (
+                    <div style={{ marginTop: 10 }}>
+                      <p className="sd-actions-help">
+                        Adjunta los documentos requeridos para la Fase 2 y envíalos para validación del VUS.
+                      </p>
+
+                      <input type="file" multiple onChange={handleReuploadChange} />
+
+                      {reuploadFiles.length > 0 && (
+                        <div className="sd-docs" style={{ marginTop: 10 }}>
+                          {reuploadFiles.map((f, i) => (
+                            <div key={`${f.name}-${i}`} className="sd-doc-row">
+                              <div className="sd-doc-name">{f.name}</div>
+                              <button
+                                type="button"
+                                className="sd-btn sd-btn-danger"
+                                onClick={() =>
+                                  setReuploadFiles((prev) => prev.filter((_, idx) => idx !== i))
+                                }
+                              >
+                                Quitar
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <button
+                        type="button"
+                        className="sd-btn sd-btn-primary"
+                        onClick={handleEnviarNuevosDocs}
+                        style={{ marginTop: 12, width: "100%" }}
+                      >
+                        Enviar documentos de Fase 2
+                      </button>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={handleEnviarNuevosDocs}
-                  >
-                    Enviar documentos de Fase 2
-                  </button>
+
+                  {esRechazada && (
+                    <p className="sd-card-note" style={{ marginTop: 10 }}>
+                      La solicitud fue rechazada de forma definitiva. No es posible adjuntar nuevos documentos.
+                    </p>
+                  )}
+
+                  {!esAprobada && !esDevuelta && !esRechazada && detalle.estado !== "PendienteFase2" && (
+                    <p className="sd-card-note" style={{ marginTop: 10 }}>
+                      No hay acciones adicionales disponibles para el estado actual.
+                    </p>
+                  )}
                 </div>
-              )}
-
-              {esRechazada && (
-                <p className="detalle-muted">
-                  La solicitud fue rechazada de forma definitiva. No es posible
-                  adjuntar nuevos documentos para esta solicitud.
-                </p>
-              )}
-
-              {!esAprobada && !esDevuelta && !esRechazada && (
-                <p className="detalle-muted">
-                  No hay acciones adicionales disponibles para el estado actual.
-                </p>
-              )}
+              </div>
             </section>
           )}
         </div>

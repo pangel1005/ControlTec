@@ -9,7 +9,6 @@ export default function AdminDashboard() {
         Desde aquí puedes gestionar usuarios, perfiles y el catálogo de
         servicios/requisitos.
       </p>
-
       <div
         style={{
           display: "grid",
