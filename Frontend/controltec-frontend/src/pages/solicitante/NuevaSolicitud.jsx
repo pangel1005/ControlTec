@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../../api/apiClient";
 import BackButton from "../../components/BackButtonClean.jsx";
+import "./NuevaSolicitud.css"; // Import new styles
 
 export default function NuevaSolicitud() {
   const navigate = useNavigate();
@@ -184,32 +185,35 @@ export default function NuevaSolicitud() {
   // ================== RENDER ==================
   if (loading) {
     return (
-      <div className="page-container nueva-solicitud-page">
+      <div className="ns-page-container">
         <BackButton />
-        <h1 className="nueva-solicitud-title">Iniciar nueva solicitud</h1>
-        <p className="nueva-solicitud-subtitle">
-          Selecciona el servicio para el cual deseas iniciar una solicitud.
-        </p>
+        <div className="ns-header-container">
+          <div className="ns-header-content">
+            <h1 className="ns-title">Iniciar nueva solicitud</h1>
+            <p className="ns-subtitle">Cargando servicios disponibles...</p>
+          </div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="page-container nueva-solicitud-page">
+    <div className="ns-page-container">
       <BackButton />
-      <div className="nueva-solicitud-header">
-        <div>
-          <h1 className="nueva-solicitud-title">Iniciar nueva solicitud</h1>
-          <p className="nueva-solicitud-subtitle">
+
+      <div className="ns-header-container">
+        <div className="ns-header-content">
+          <h1 className="ns-title">Iniciar nueva solicitud</h1>
+          <p className="ns-subtitle">
             Selecciona el servicio para el cual deseas iniciar una solicitud.
           </p>
         </div>
       </div>
 
-      {loading && <p>Cargando servicios...</p>}
-      {error && !loading && <p className="login-error">{error}</p>}
+      {error && !loading && <div className="ns-error-msg">{error}</div>}
+
       {!loading && !error && servicios.length === 0 && (
-        <p className="nueva-solicitud-empty">
+        <p className="ns-status-msg">
           No hay servicios disponibles en este momento.
         </p>
       )}
@@ -236,32 +240,29 @@ export default function NuevaSolicitud() {
           const canSubmit = selectedFiles.length >= 1 && !submitting;
 
           return (
-            <div
-              key={servicio.id}
-              className={`servicio-block ${
-                isExpanded ? "servicio-block-expanded" : ""
-              }`}
-            >
-              <div className="servicio-block-header">
-                <h2 className="servicio-block-title">{servicio.nombre}</h2>
+            <div key={servicio.id} className="ns-card">
+              <div className="ns-card-header">
+                <h2 className="ns-card-title">{servicio.nombre}</h2>
               </div>
 
-              <div className="servicio-block-content">
-                <div className="servicio-col servicio-col-descripcion">
-                  <p className="servicio-description-text">
+              <div className="ns-card-grid">
+                {/* Column 1: Description */}
+                <div className="ns-col-desc">
+                  <p>
                     {servicio.descripcion ??
                       "Descripción no disponible para este servicio."}
                   </p>
                 </div>
 
-                <div className="servicio-col servicio-col-requerimientos">
-                  <h3 className="servicio-col-title">Requerimientos:</h3>
+                {/* Column 2: Requirements */}
+                <div className="ns-col-reqs">
+                  <h3 className="ns-reqs-title">Requerimientos:</h3>
                   {docsRequeridos.length === 0 ? (
-                    <p className="servicio-requerimientos-empty">
+                    <p style={{ fontSize: '0.85rem', color: '#9ca3af' }}>
                       Este servicio aún no tiene requerimientos configurados.
                     </p>
                   ) : (
-                    <ul className="servicio-requerimientos-list">
+                    <ul className="ns-reqs-list">
                       {docsRequeridos.map((doc) => (
                         <li key={doc.id ?? doc.Id}>
                           {doc.nombre ?? doc.Nombre}
@@ -271,19 +272,20 @@ export default function NuevaSolicitud() {
                   )}
                 </div>
 
-                <div className="servicio-col servicio-col-acciones">
+                {/* Column 3: Actions */}
+                <div className="ns-col-actions">
                   <button
                     type="button"
-                    className="btn-outline servicio-side-btn"
+                    className="ns-btn ns-btn-outline"
                     onClick={() => handleDownloadInfo(servicio)}
                   >
-                    Descargar pdf con más información
+                    Descargar info PDF
                   </button>
 
                   {!isExpanded && (
                     <button
                       type="button"
-                      className="btn-primary servicio-side-btn"
+                      className="ns-btn ns-btn-primary"
                       onClick={() => handleStartSolicitud(servicio.id, servicio)}
                     >
                       Iniciar solicitud
@@ -292,15 +294,15 @@ export default function NuevaSolicitud() {
                 </div>
               </div>
 
+              {/* Upload Dropzone (Expanded) */}
               {isExpanded && (
-                <div className="servicio-upload-section">
-                  <p className="servicio-upload-text">
-                    Por favor adjunte los documentos requeridos antes
-                    señalados:
+                <div className="ns-upload-section">
+                  <p className="ns-subtitle" style={{ marginBottom: '1rem' }}>
+                    Por favor adjunte los documentos requeridos:
                   </p>
 
                   <div
-                    className="upload-dropzone"
+                    className="ns-dropzone"
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => handleDrop(servicio.id, e)}
                     onClick={() =>
@@ -310,16 +312,15 @@ export default function NuevaSolicitud() {
                     }
                   >
                     {selectedFiles.length === 0 ? (
-                      <span className="upload-dropzone-placeholder">
-                        Arrastra los archivos aquí o haz clic para
-                        seleccionarlos.
+                      <span className="ns-dropzone-text">
+                        Arrastra los archivos aquí o haz clic para seleccionarlos.
                       </span>
                     ) : (
-                      <ul className="upload-file-list">
+                      <div className="ns-file-list">
                         {selectedFiles.map((file, idx) => (
-                          <li key={idx}>{file.name}</li>
+                          <span key={idx} className="ns-file-item">{file.name}</span>
                         ))}
-                      </ul>
+                      </div>
                     )}
 
                     <input
@@ -333,24 +334,24 @@ export default function NuevaSolicitud() {
                     />
                   </div>
 
-                  <div className="upload-actions">
+                  <div className="ns-upload-actions">
                     <button
                       type="button"
-                      className={`btn-primary upload-submit-btn ${
-                        !canSubmit ? "btn-disabled" : ""
-                      }`}
-                      disabled={!canSubmit}
-                      onClick={() => handleSubirDocumentos(servicio)}
+                      className="ns-btn ns-btn-danger"
+                      style={{ width: 'auto' }}
+                      onClick={() => handleCancelSolicitud(servicio.id)}
                     >
-                      {submitting ? "Enviando..." : "Subir documentos"}
+                      Cancelar
                     </button>
 
                     <button
                       type="button"
-                      className="btn-danger upload-cancel-btn"
-                      onClick={() => handleCancelSolicitud(servicio.id)}
+                      className={`ns-btn ns-btn-primary ${!canSubmit ? "ns-btn-disabled" : ""}`}
+                      style={{ width: 'auto' }}
+                      disabled={!canSubmit}
+                      onClick={() => handleSubirDocumentos(servicio)}
                     >
-                      Cancelar solicitud
+                      {submitting ? "Enviando..." : "Enviar solicitud"}
                     </button>
                   </div>
                 </div>

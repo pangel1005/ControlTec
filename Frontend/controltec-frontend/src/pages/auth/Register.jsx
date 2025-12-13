@@ -2,7 +2,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-
+import logoMp from "../../assets/logo_mp.png"; // Import logo
+import "./Register.css"; // Import new styles
 
 export default function Register() {
   const [nombre, setNombre] = useState("");
@@ -75,17 +76,19 @@ export default function Register() {
   };
 
   return (
-    <div className="login-page">
-      <div className="login-card">
-        <div className="login-header">
-          <h1>Crear cuenta</h1>
-          <p>Registra un nuevo usuario en ControlTec</p>
+    <div className="register-container">
+      <div className="register-card">
+        <img src={logoMp} alt="Ministerio Público" className="logo-mp" />
+
+        <div className="register-header">
+          <h1 className="register-title">Crear cuenta</h1>
+          <p className="register-subtitle">Registra un nuevo usuario en ControlTec</p>
         </div>
 
-        {error && <div className="login-error-banner">{error}</div>}
-        {success && <div className="login-success-banner">{success}</div>}
+        {error && <div className="register-error-banner">{error}</div>}
+        {success && <div className="register-success-banner">{success}</div>}
 
-        <form onSubmit={handleSubmit} className="login-form">
+        <form onSubmit={handleSubmit} className="register-form">
           {/* Nombre */}
           <div className="form-group">
             <label htmlFor="nombre">Nombre completo</label>
@@ -128,8 +131,8 @@ export default function Register() {
           {/* Tipo de usuario */}
           <div className="form-group">
             <label>Tipo de usuario</label>
-            <div style={{ display: "flex", gap: "1rem" }}>
-              <label>
+            <div className="radio-group">
+              <label className="radio-label">
                 <input
                   type="radio"
                   name="tipoUsuario"
@@ -139,7 +142,7 @@ export default function Register() {
                 />{" "}
                 Solicitante externo
               </label>
-              <label>
+              <label className="radio-label">
                 <input
                   type="radio"
                   name="tipoUsuario"
@@ -147,7 +150,7 @@ export default function Register() {
                   checked={tipoUsuario === "Interno"}
                   onChange={() => setTipoUsuario("Interno")}
                 />{" "}
-                Usuario interno (backoffice)
+                Usuario interno
               </label>
             </div>
           </div>
@@ -195,22 +198,21 @@ export default function Register() {
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary login-submit"
+            className="register-submit-btn"
           >
             {loading ? "Registrando..." : "Registrarse"}
           </button>
         </form>
 
-        <p className="login-register-text">
+        <div className="login-link-container">
           ¿Ya tienes cuenta?{" "}
           <span
-            className="link-button"
+            className="login-link"
             onClick={() => navigate("/login")}
-            style={{ cursor: "pointer" }}
           >
             Inicia sesión
           </span>
-        </p>
+        </div>
       </div>
     </div>
   );

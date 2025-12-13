@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import api from "../../api/apiClient";
 import { useAuth } from "../../context/AuthContext";
+import "./MisSolicitudes.css"; // Import new styles
 
 export default function MisSolicitudes() {
   const { usuario } = useAuth();
@@ -45,31 +46,32 @@ export default function MisSolicitudes() {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",
-      });
+    });
   };
 
   const getEstadoClass = (estado = "") => {
     const e = estado.toLowerCase();
     if (e.includes("rechaz") || e.includes("cancel"))
-      return "badge badge-danger";
-    if (e.includes("aprob")) return "badge badge-success";
-    return "badge badge-warning";
+      return "ms-badge ms-badge-danger";
+    if (e.includes("aprob") || e.includes("completad")) return "ms-badge ms-badge-success";
+    if (e.includes("pendiente") || e.includes("depositad")) return "ms-badge ms-badge-warning";
+    return "ms-badge ms-badge-neutral";
   };
 
   return (
-    <div className="page-container solicitudes-page">
+    <div className="ms-page-container">
       {/* Header */}
-      <div className="solicitudes-header">
-        <div>
-          <h1 className="solicitudes-title">Mis solicitudes</h1>
-          <p className="solicitudes-subtitle">
+      <div className="ms-header">
+        <div className="ms-title-group">
+          <h1 className="ms-title">Mis solicitudes</h1>
+          <p className="ms-subtitle">
             Revisa el estado y avance de tus solicitudes en ControlTec.
           </p>
         </div>
 
         <button
           type="button"
-          className="btn-primary solicitudes-new-btn"
+          className="ms-btn-new"
           onClick={() => navigate("/solicitudes/nueva")}
         >
           Iniciar nueva solicitud
@@ -78,24 +80,24 @@ export default function MisSolicitudes() {
 
       {/* Notificación de éxito si venimos de NuevaSolicitud */}
       {successMessage && (
-        <div className="notification-success">{successMessage}</div>
+        <div className="notification-success" style={{ marginBottom: '1rem' }}>{successMessage}</div>
       )}
 
       {/* Estados de carga / error */}
-      {loading && <p>Cargando solicitudes...</p>}
+      {loading && <p className="ms-loading">Cargando solicitudes...</p>}
 
-      {error && !loading && <p className="login-error">{error}</p>}
+      {error && !loading && <p className="ms-error">{error}</p>}
 
       {!loading && !error && solicitudes.length === 0 && (
-        <p className="solicitudes-empty">
+        <p className="ms-empty">
           Aún no tienes solicitudes registradas.
         </p>
       )}
 
       {/* Tabla */}
       {!loading && !error && solicitudes.length > 0 && (
-        <div className="solicitudes-table-wrapper">
-          <table className="solicitudes-table">
+        <div className="ms-table-container">
+          <table className="ms-table">
             <thead>
               <tr>
                 <th>#</th>
@@ -127,9 +129,8 @@ export default function MisSolicitudes() {
                   <td>
                     <button
                       type="button"
-                      className="btn-secondary btn-sm"
+                      className="ms-btn-action"
                       onClick={() => navigate(`/solicitudes/${s.id}`)}
-
                     >
                       Ver
                     </button>

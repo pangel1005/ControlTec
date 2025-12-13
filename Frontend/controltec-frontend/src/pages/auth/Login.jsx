@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
+import logoMp from "../../assets/logo_mp.png"; // Import logo
+import "./Login.css"; // Import new styles
 
 export default function Login() {
   const [correo, setCorreo] = useState("");
@@ -75,11 +77,13 @@ export default function Login() {
   };
 
   return (
-    <div className="login-page">
+    <div className="login-container">
       <div className="login-card">
+        <img src={logoMp} alt="Ministerio Público" className="logo-mp" />
+
         <div className="login-header">
-          <h1>Bienvenido</h1>
-          <p>Inicia sesión en tu cuenta</p>
+          <h1 className="login-title">Bienvenido</h1>
+          <p className="login-subtitle">Sistema ControlTec</p>
         </div>
 
         {error && <div className="login-error-banner">{error}</div>}
@@ -90,7 +94,7 @@ export default function Login() {
             <input
               id="email"
               type="email"
-              placeholder="ejemplo@correo.com"
+              placeholder="nombre@ejemplo.com"
               value={correo}
               onChange={(e) => setCorreo(e.target.value)}
               required
@@ -98,20 +102,11 @@ export default function Login() {
           </div>
 
           <div className="form-group">
-            <div className="form-label-row">
-              <label htmlFor="password">Contraseña</label>
-              <button
-                type="button"
-                className="link-button"
-                onClick={() =>
-                  alert("Recuperación de contraseña pendiente de implementar")
-                }
-              >
-                ¿Olvidaste tu contraseña?
-              </button>
+            <div className="form-label-row" style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <label htmlFor="password" style={{ marginBottom: 0 }}>Contraseña</label>
             </div>
 
-            <div className="password-input-wrapper">
+            <div className="password-container">
               <input
                 id="password"
                 type={mostrarPassword ? "text" : "password"}
@@ -128,27 +123,36 @@ export default function Login() {
                 {mostrarPassword ? "Ocultar" : "Ver"}
               </button>
             </div>
+
+            <button
+              type="button"
+              className="forgot-password-link"
+              onClick={() =>
+                alert("Recuperación de contraseña pendiente de implementar")
+              }
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="btn-primary login-submit"
+            className="login-submit-btn"
           >
             {loading ? "Iniciando sesión..." : "Iniciar sesión"}
           </button>
         </form>
 
-        <p className="login-register-text">
-          ¿No tienes cuenta?{" "}
+        <div className="register-text">
+          ¿No tienes cuenta?
           <span
-            className="link-button"
-            style={{ cursor: "pointer" }}
+            className="register-link"
             onClick={() => navigate("/registro")}
           >
             Regístrate aquí
           </span>
-        </p>
+        </div>
       </div>
     </div>
   );
