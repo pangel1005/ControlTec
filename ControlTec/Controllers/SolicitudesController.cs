@@ -878,7 +878,7 @@ new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia =
         // ======================================
         [HttpPost("{id}/comunicacion-rechazo")]
         [Authorize(Roles = "Direccion,Admin")]
-        public async Task<ActionResult<object>> GenerarComunicacionRechazo(int id)
+        public async Task<ActionResult<object>> GenerarComunicacionRechazo(int id, [FromBody] GenerarComunicacionRechazoDto dto)
         {
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Usuario)
@@ -888,7 +888,6 @@ new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia =
             if (solicitud == null)
                 return NotFound("Solicitud no encontrada.");
 
-            // Solo se permite generar la comunicación cuando está en RechazadaET
             if (!string.Equals(solicitud.Estado, EstadosSolicitud.RechazadaET, StringComparison.OrdinalIgnoreCase))
                 return BadRequest("Solo se puede generar la comunicación de rechazo para solicitudes en estado RechazadaET.");
 
@@ -897,14 +896,26 @@ new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia =
             if (usuario == null)
                 return BadRequest("El usuario que genera la comunicación no existe.");
 
-            // Generar el PDF de comunicación de rechazo
-            var ruta = await _rechazoService.GenerarComunicacionRechazoAsync(id);
+            // Ruta del PDF: /uploads/comunicaciones_rechazo/{id}/ComunicacionRechazo_{id}.pdf
+            var carpeta = Path.Combine("uploads", "comunicaciones_rechazo", id.ToString());
+            if (!Directory.Exists(carpeta))
+                Directory.CreateDirectory(carpeta);
+            var nombreArchivo = $"ComunicacionRechazo_{id}.pdf";
+            var rutaRelativa = Path.Combine("/", carpeta, nombreArchivo);
 
-            // Pasar de RechazadaET -> Rechazada (estado final visible al usuario)
+            // Generar el PDF (asegúrate de que tu servicio use esta ruta)
+            var ruta = await _rechazoService.GenerarComunicacionRechazoAsync(id);
+            solicitud.RutaComunicacionRechazo = ruta;
+
+            // Guardar la ruta en la solicitud
+            solicitud.RutaComunicacionRechazo = rutaRelativa;
+
             var estadoAnterior = solicitud.Estado;
             solicitud.Estado = EstadosSolicitud.Rechazada;
 
-            var comentario = $"Comunicación de rechazo generada por {usuario.Roll}.";
+            var comentario = string.IsNullOrWhiteSpace(dto.Comentario)
+                ? $"Comunicación de rechazo generada por {usuario.Roll}."
+                : dto.Comentario;
 
             var nuevoHistorial = new HistorialEstado
             {
@@ -923,7 +934,7 @@ new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia =
             {
                 solicitud.Id,
                 solicitud.Estado,
-                RutaComunicacionRechazo = ruta,
+                RutaComunicacionRechazo = rutaRelativa,
                 Historial = new
                 {
                     nuevoHistorial.Id,

@@ -23,5 +23,8 @@
 
         public string? RutaCertificado { get; set; }
 
+        public string? RutaComunicacionRechazo { get; set; }
+
+
     }
 }

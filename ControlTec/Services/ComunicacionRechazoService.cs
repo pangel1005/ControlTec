@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 using ControlTec.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using QuestPDF.Fluent;
+using QuestPDF.Helpers;
+using QuestPDF.Infrastructure;
 
 namespace ControlTec.Services
 {
@@ -20,7 +23,6 @@ namespace ControlTec.Services
 
         public async Task<string> GenerarComunicacionRechazoAsync(int solicitudId)
         {
-            // Traer datos básicos de la solicitud para llenar la comunicación
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Usuario)
                 .Include(s => s.Servicio)
@@ -38,30 +40,47 @@ namespace ControlTec.Services
             var fileName = $"rechazo_{solicitudId}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
             var filePath = Path.Combine(carpeta, fileName);
 
-            // 🔹 POR AHORA: placeholder sencillo.
-            // Luego puedes reemplazar esto por una generación real de PDF (iText7, QuestPDF, etc).
-            var contenido = $@"
-COMUNICACIÓN DE RECHAZO
+            var logoPath = Path.Combine(webRoot, "img", "logo_sns.png");
+            var fecha = DateTime.Now.ToString("dd/MM/yyyy");
 
-Fecha: {DateTime.Now:dd/MM/yyyy}
+            Document.Create(container =>
+            {
+                container.Page(page =>
+                {
+                    page.Size(PageSizes.A4);
+                    page.Margin(40);
+                    page.PageColor(Colors.White);
+                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(12));
 
-Solicitante: {solicitud.Usuario?.Nombre} ({solicitud.Usuario?.Correo})
-Servicio: {solicitud.Servicio?.Nombre}
-No. de solicitud: {solicitud.Id}
+                    page.Header().Row(row =>
+                    {
+                        row.RelativeItem().AlignCenter().Height(90).Image(logoPath, ImageScaling.FitArea);
+                    });
 
-Por medio de la presente se comunica que la solicitud ha sido RECHAZADA 
-según los criterios de evaluación técnica establecidos por DIGEAMPS.
+                    page.Content().Column(col =>
+                    {
+                        col.Spacing(12);
 
-Atentamente,
+                        col.Item().Text("COMUNICACIÓN DE RECHAZO")
+                            .FontSize(18).SemiBold().AlignCenter();
 
-Dirección.
-";
+                        col.Item().Text($"Fecha: {fecha}").AlignRight();
+                        col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
 
-            // Escribimos texto dentro de un .pdf (sigue siendo un archivo, aunque no tenga formato),
-            // para que al menos tengas la ruta y puedas cambiar luego la lógica a una lib de PDF.
-            await File.WriteAllTextAsync(filePath, contenido);
+                        col.Item().Text($"Solicitante: {solicitud.Usuario?.Nombre} ({solicitud.Usuario?.Correo})");
+                        col.Item().Text($"Servicio: {solicitud.Servicio?.Nombre}");
+                        col.Item().Text($"No. de solicitud: {solicitud.Id}");
 
-            // Ruta relativa para consumir desde el front
+                        col.Item().PaddingVertical(10).Text(
+                            "Por medio de la presente se comunica que la solicitud ha sido RECHAZADA según los criterios de evaluación técnica establecidos por DIGEAMPS."
+                        ).Italic();
+
+                        col.Item().PaddingTop(40).AlignCenter().Text("Atentamente,");
+                        col.Item().AlignCenter().Text("Dirección.");
+                    });
+                });
+            }).GeneratePdf(filePath);
+
             var rutaRelativa = $"/rechazos/{fileName}";
             return rutaRelativa;
         }
