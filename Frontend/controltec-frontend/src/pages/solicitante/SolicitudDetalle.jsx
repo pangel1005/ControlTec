@@ -758,7 +758,8 @@ export default function SolicitudDetalle() {
               />
 
               <div className="detalle-actions">
-                {detalle.estado === "DepositadaFase2" ? (
+                {/* Botón verde para servicios con fases */}
+                {detalle.estado === "DepositadaFase2" && (detalle.servicio?.id === 4 || detalle.servicio?.id === 5) ? (
                   <button
                     type="button"
                     className="btn-primary"
@@ -778,6 +779,51 @@ export default function SolicitudDetalle() {
                     disabled={accionesBloqueadas}
                   >
                     Aprobar Fase 2
+                  </button>
+                ) : detalle.estado === "DepositadaFase2" && detalle.servicio?.id !== 4 && detalle.servicio?.id !== 5 ? (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={async () => {
+                      setAccionesBloqueadas(true);
+                      try {
+                        await api.post(`/api/Solicitudes/${detalle.id}/aprobar-fase2`, {});
+                        setComentarioVus("");
+                        await cargarDetalle();
+                        alert("Fase 2 aprobada. La solicitud pasa a Validación Recepción.");
+                      } catch (err) {
+                        console.error("Error al aprobar Fase 2 como VUS:", err);
+                        alert("No fue posible aprobar Fase 2. Verifica que el backend permita esta transición.");
+                        setAccionesBloqueadas(false);
+                      }
+                    }}
+                    disabled={accionesBloqueadas}
+                  >
+                    Aprobar y pasar a Validación Recepción
+                  </button>
+                ) : detalle.estado === "Depositada" && detalle.servicio?.id === 1 ? (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={async () => {
+                      setAccionesBloqueadas(true);
+                      try {
+                        await api.post(`/api/Solicitudes/${detalle.id}/cambiar-estado`, {
+                          estadoNuevo: "Validación Recepción",
+                          comentario: comentarioVus
+                        });
+                        setComentarioVus("");
+                        await cargarDetalle();
+                        alert("Solicitud aprobada y enviada a Validación Recepción.");
+                      } catch (err) {
+                        console.error("Error al aprobar solicitud como VUS:", err);
+                        alert("No fue posible aprobar la solicitud. Verifica que el backend permita esta transición.");
+                        setAccionesBloqueadas(false);
+                      }
+                    }}
+                    disabled={accionesBloqueadas}
+                  >
+                    Aprobar solicitud
                   </button>
                 ) : (
                   <button

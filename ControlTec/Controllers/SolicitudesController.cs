@@ -540,6 +540,7 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.DepositadaFase1, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta, Hacia = EstadosSolicitud.ValidacionRecepcion },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia = EstadosSolicitud.ValidacionRecepcion },
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.ValidacionRecepcion },
 
                 // Técnico UPC
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.EvaluacionTecnica },
@@ -843,6 +844,11 @@ namespace ControlTec.Controllers
             await _context.SaveChangesAsync();
 
             if (solicitud.ServicioId == 4 || solicitud.ServicioId == 5)
+            {
+                solicitud.Estado = EstadosSolicitud.ValidacionRecepcion;
+                await _context.SaveChangesAsync();
+            }
+            else if (solicitud.Estado == EstadosSolicitud.Fase2Aprobada)
             {
                 solicitud.Estado = EstadosSolicitud.ValidacionRecepcion;
                 await _context.SaveChangesAsync();
