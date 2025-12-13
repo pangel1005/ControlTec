@@ -1038,6 +1038,38 @@ export default function SolicitudDetalle() {
                 </button>
               )}
 
+              {/* Certificado de rechazo (nuevo flujo) */}
+              {detalle.rutaCertificadoRechazo && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-danger"
+                    onClick={() => {
+                      const base = api.defaults.baseURL || "";
+                      window.open(`${base}${detalle.rutaCertificadoRechazo}`, "_blank");
+                    }}
+                  >
+                    Ver certificado de rechazo
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ marginLeft: 8 }}
+                    onClick={() => {
+                      const base = api.defaults.baseURL || "";
+                      const link = document.createElement('a');
+                      link.href = `${base}${detalle.rutaCertificadoRechazo}`;
+                      link.download = `Certificado_Rechazo_Solicitud_${detalle.id}.pdf`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }}
+                  >
+                    Descargar certificado de rechazo
+                  </button>
+                </>
+              )}
+
               {detalle.rutaComunicacionRechazo && (
                 <>
                   <button

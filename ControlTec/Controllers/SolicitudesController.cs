@@ -5,7 +5,6 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using ControlTec.Data;
-using ControlTec.Models; // Asegúrate de que la clase EstadosSolicitud esté en este namespace
 using ControlTec.Models;
 using ControlTec.Models.DTOs;
 using ControlTec.Services;
@@ -19,7 +18,7 @@ namespace ControlTec.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] // todos requieren token
+    [Authorize]
     public class SolicitudesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -59,58 +58,44 @@ namespace ControlTec.Controllers
             public string Hacia { get; set; } = null!;
         }
 
-        
-
         // ==============================
         // Bandeja por rol (para el GET)
         // ==============================
         private static readonly Dictionary<string, string[]> EstadosPorRol = new()
         {
-            // Ventanilla Única de Servicios
             { "VUS", new[]
                 {
-                    EstadosSolicitud.Depositada,   // cuando el usuario la envía
-                    EstadosSolicitud.DepositadaFase1, // fase 1
-                    EstadosSolicitud.DepositadaFase2, // fase 2
-                    EstadosSolicitud.Devuelta      // cuando vuelve corregida
-                    // NO ve ni RechazadaET ni Rechazada
+                    EstadosSolicitud.Depositada,
+                    EstadosSolicitud.DepositadaFase1,
+                    EstadosSolicitud.DepositadaFase2,
+                    EstadosSolicitud.Devuelta
                 }
             },
-
-            // Técnico UPC
             { "TecnicoUPC", new[]
                 {
                     EstadosSolicitud.ValidacionRecepcion
                 }
             },
-
-            // Encargado UPC (DIGEAMPS)
             { "EncargadoUPC", new[]
                 {
                     EstadosSolicitud.EvaluacionTecnica
                 }
             },
-
-            // DNCD
             { "DNCD", new[]
                 {
                     EstadosSolicitud.AprobacionDIGEAMPS
                 }
             },
-
-            // Dirección
             { "Direccion", new[]
                 {
-                    // Solicitudes aprobadas por DNCD (para emitir certificado)
                     EstadosSolicitud.AprobacionDNCD,
-                    // Rechazos internos de Evaluación Técnica (para comunicación de rechazo)
                     EstadosSolicitud.RechazadaET
                 }
             }
         };
 
         // ======================================
-        // 0. INICIAR SOLICITUD (Solicitante / Usuario / Admin)
+        // 0. INICIAR SOLICITUD
         // ======================================
         [HttpPost("iniciar")]
         [Authorize(Roles = "Usuario,Solicitante,Admin")]
@@ -129,13 +114,9 @@ namespace ControlTec.Controllers
             if (servicio == null)
                 return BadRequest("El servicio indicado no existe.");
 
-
-            // Estado inicial según servicio
             var estadoInicial = (dto.ServicioId == 4 || dto.ServicioId == 5)
-                ? EstadosSolicitud.PendienteFase1 // Fase 1 para servicios 4 y 5
+                ? EstadosSolicitud.PendienteFase1
                 : EstadosSolicitud.Pendiente;
-
-
 
             var solicitud = new Solicitud
             {
@@ -191,7 +172,7 @@ namespace ControlTec.Controllers
         }
 
         // ======================================
-        // 1. GET: SOLICITUDES SEGÚN EL ROL LOGUEADO (BANDEJA)
+        // 1. GET: SOLICITUDES SEGÚN EL ROL
         // ======================================
         [HttpGet]
         public async Task<ActionResult<IEnumerable<object>>> GetSolicitudes()
@@ -204,17 +185,14 @@ namespace ControlTec.Controllers
                 .Include(s => s.Usuario)
                 .AsQueryable();
 
-            // 1) ADMIN -> ve todas
             if (string.Equals(rol, "Admin", StringComparison.OrdinalIgnoreCase))
             {
-                // sin filtros extra
+                // Admin ve todo
             }
-            // 2) SOLICITANTE / USUARIO -> solo sus propias solicitudes
             else if (rol == "Solicitante" || rol == "Usuario")
             {
                 query = query.Where(s => s.UsuarioId == userId);
             }
-            // 3) ROLES INTERNOS -> por estado que les corresponde
             else if (EstadosPorRol.TryGetValue(rol, out var estadosAsignados))
             {
                 query = query.Where(s => estadosAsignados.Contains(s.Estado));
@@ -232,6 +210,7 @@ namespace ControlTec.Controllers
                     s.Estado,
                     s.FechaCreacion,
                     s.RutaCertificado,
+                    s.RutaComunicacionRechazo, // ✅ IMPORTANTE
                     Usuario = s.Usuario == null ? null : new
                     {
                         s.Usuario.Id,
@@ -278,7 +257,8 @@ namespace ControlTec.Controllers
                     s.Servicio.Nombre,
                     s.Servicio.Costo
                 },
-                s.RutaCertificado
+                s.RutaCertificado,
+                s.RutaComunicacionRechazo // ✅
             });
 
             return Ok(resultado);
@@ -339,8 +319,7 @@ namespace ControlTec.Controllers
             {
                 if (!_context.Solicitudes.Any(e => e.Id == id))
                     return NotFound();
-                else
-                    throw;
+                throw;
             }
 
             return NoContent();
@@ -403,6 +382,7 @@ namespace ControlTec.Controllers
                 solicitud.Estado,
                 solicitud.FechaCreacion,
                 solicitud.RutaCertificado,
+                solicitud.RutaComunicacionRechazo, // ✅ para que salga el botón en el front
                 Usuario = solicitud.Usuario == null ? null : new
                 {
                     solicitud.Usuario.Id,
@@ -474,10 +454,7 @@ namespace ControlTec.Controllers
                 query = query.Where(s => s.UsuarioId == usuarioId.Value);
 
             if (fechaDesde.HasValue)
-            {
-                var d = fechaDesde.Value.Date;
-                query = query.Where(s => s.FechaCreacion >= d);
-            }
+                query = query.Where(s => s.FechaCreacion >= fechaDesde.Value.Date);
 
             if (fechaHasta.HasValue)
             {
@@ -493,6 +470,7 @@ namespace ControlTec.Controllers
                     s.Estado,
                     s.FechaCreacion,
                     s.RutaCertificado,
+                    s.RutaComunicacionRechazo, // ✅
                     Usuario = s.Usuario == null ? null : new
                     {
                         s.Usuario.Id,
@@ -555,13 +533,12 @@ namespace ControlTec.Controllers
 
             var transiciones = new List<TransicionRol>
             {
-                // VUS (primera etapa)
+                // VUS
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Fase1Aprobada },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.DepositadaFase1, Hacia = EstadosSolicitud.Fase1Aprobada },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Depositada, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.DepositadaFase1, Hacia = EstadosSolicitud.Devuelta },
-                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta,  Hacia = EstadosSolicitud.ValidacionRecepcion },
-                // Permitir que VUS pase de Fase2Aprobada a Validación Recepción
+                new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Devuelta, Hacia = EstadosSolicitud.ValidacionRecepcion },
                 new TransicionRol { Rol = "VUS", Desde = EstadosSolicitud.Fase2Aprobada, Hacia = EstadosSolicitud.ValidacionRecepcion },
 
                 // Técnico UPC
@@ -570,30 +547,26 @@ namespace ControlTec.Controllers
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.Rechazada },
                 new TransicionRol { Rol = "TecnicoUPC", Desde = EstadosSolicitud.ValidacionRecepcion, Hacia = EstadosSolicitud.RechazadaET },
 
-                // Encargado UPC (DIGEAMPS) – RF-2.3
-                // Aprobado → Aprobación DIGEAMPS
+                // Encargado UPC
                 new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.AprobacionDIGEAMPS },
-                // NO aprobado → devuelve al usuario
                 new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.Devuelta },
-                // Rechazo → queda en RechazadaET para que Dirección genere la comunicación
                 new TransicionRol { Rol = "EncargadoUPC", Desde = EstadosSolicitud.EvaluacionTecnica, Hacia = EstadosSolicitud.RechazadaET },
 
                 // DNCD
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.AprobacionDNCD },
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Devuelta },
-                // Rechazo directo desde DNCD → Rechazada final
                 new TransicionRol { Rol = "DNCD", Desde = EstadosSolicitud.AprobacionDIGEAMPS, Hacia = EstadosSolicitud.Rechazada },
 
-                // Dirección – recibe directamente desde DNCD para aprobación
+                // Dirección
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Aprobada },
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "Direccion", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
 
-                // Admin – lo mismo que Dirección + Entregada
+                // Admin
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Aprobada },
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Devuelta },
                 new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.AprobacionDNCD, Hacia = EstadosSolicitud.Rechazada },
-                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.Aprobada,        Hacia = EstadosSolicitud.Entregada },
+                new TransicionRol { Rol = "Admin", Desde = EstadosSolicitud.Aprobada, Hacia = EstadosSolicitud.Entregada },
             };
 
             bool esAdmin = string.Equals(rolUsuario, "Admin", StringComparison.OrdinalIgnoreCase);
@@ -608,17 +581,12 @@ namespace ControlTec.Controllers
             {
                 transicionPermitida = transiciones.Any(t =>
                     string.Equals(t.Rol, rolUsuario, StringComparison.OrdinalIgnoreCase) &&
-                    string.Equals(t.Desde ?? string.Empty,
-                                  estadoAnterior ?? string.Empty,
-                                  StringComparison.OrdinalIgnoreCase) &&
+                    string.Equals(t.Desde ?? string.Empty, estadoAnterior ?? string.Empty, StringComparison.OrdinalIgnoreCase) &&
                     string.Equals(t.Hacia, estadoNuevo, StringComparison.OrdinalIgnoreCase));
             }
 
             if (!transicionPermitida)
-            {
-                return BadRequest(
-                    $"El rol '{rolUsuario}' no puede cambiar la solicitud de '{estadoAnterior}' a '{estadoNuevo}'.");
-            }
+                return BadRequest($"El rol '{rolUsuario}' no puede cambiar la solicitud de '{estadoAnterior}' a '{estadoNuevo}'.");
 
             solicitud.Estado = estadoNuevo;
 
@@ -644,7 +612,7 @@ namespace ControlTec.Controllers
             _context.HistorialEstados.Add(nuevoHistorial);
             await _context.SaveChangesAsync();
 
-            var resultado = new
+            return Ok(new
             {
                 solicitud.Id,
                 EstadoAnterior = estadoAnterior,
@@ -662,14 +630,11 @@ namespace ControlTec.Controllers
                         usuario.Roll
                     }
                 }
-            };
-
-            return Ok(resultado);
+            });
         }
 
-
         // ============================
-        // 8. SUBIR DOCUMENTO A SOLICITUD
+        // 8. SUBIR DOCUMENTO
         // ============================
         [HttpPost("{id}/documentos")]
         [Consumes("multipart/form-data")]
@@ -737,7 +702,7 @@ namespace ControlTec.Controllers
                 return Forbid();
 
             var estadoAnterior = solicitud.Estado;
-            string nuevoEstado = null;
+            string? nuevoEstado = null;
 
             if (solicitud.ServicioId == 4 || solicitud.ServicioId == 5)
             {
@@ -775,7 +740,7 @@ namespace ControlTec.Controllers
             _context.HistorialEstados.Add(nuevoHistorial);
             await _context.SaveChangesAsync();
 
-            var resultado = new
+            return Ok(new
             {
                 solicitud.Id,
                 solicitud.Estado,
@@ -808,13 +773,11 @@ namespace ControlTec.Controllers
                     nuevoHistorial.Comentario,
                     nuevoHistorial.FechaCambio
                 }
-            };
-
-            return Ok(resultado);
+            });
         }
 
         // ======================================
-        // 10. GENERAR CERTIFICADO (Dirección / Admin)
+        // 10. GENERAR CERTIFICADO
         // ======================================
         [HttpPost("{id}/certificado")]
         [Authorize(Roles = "Direccion,Admin")]
@@ -833,6 +796,9 @@ namespace ControlTec.Controllers
 
             var ruta = await _certificadoService.GenerarCertificadoAsync(id);
 
+            solicitud.RutaCertificado = ruta;
+            await _context.SaveChangesAsync();
+
             return Ok(new
             {
                 solicitud.Id,
@@ -844,7 +810,6 @@ namespace ControlTec.Controllers
         // ==============================
         // APROBAR FASES PARA SERVICIOS 4 Y 5 (VUS/Admin)
         // ==============================
-
         [Authorize(Roles = "VUS,Admin")]
         [HttpPost("{solicitudId}/aprobar-fase1")]
         public async Task<IActionResult> AprobarFase1(int solicitudId)
@@ -855,18 +820,15 @@ namespace ControlTec.Controllers
             if (solicitud.Estado != EstadosSolicitud.DepositadaFase1)
                 return BadRequest("No está en la fase 1.");
 
-            // Aprueba Fase 1
             solicitud.Estado = EstadosSolicitud.Fase1Aprobada;
             await _context.SaveChangesAsync();
 
-            // Inicia Fase 2
             solicitud.Estado = EstadosSolicitud.PendienteFase2;
             await _context.SaveChangesAsync();
 
             return Ok(new { mensaje = "Fase 1 aprobada. Ahora el usuario puede subir y enviar documentos de Fase 2." });
         }
 
-        // POST: api/Solicitudes/{solicitudId}/aprobar-fase2
         [Authorize(Roles = "VUS,Admin")]
         [HttpPost("{solicitudId}/aprobar-fase2")]
         public async Task<IActionResult> AprobarFase2(int solicitudId)
@@ -880,7 +842,6 @@ namespace ControlTec.Controllers
             solicitud.Estado = EstadosSolicitud.Fase2Aprobada;
             await _context.SaveChangesAsync();
 
-            // Para servicios 4 y 5, pasar inmediatamente a Validación Recepción
             if (solicitud.ServicioId == 4 || solicitud.ServicioId == 5)
             {
                 solicitud.Estado = EstadosSolicitud.ValidacionRecepcion;
@@ -892,11 +853,10 @@ namespace ControlTec.Controllers
 
         // ======================================
         // 11. GENERAR COMUNICACIÓN DE RECHAZO (Dirección / Admin)
-        //      Requisito RF-2.3: cuando la evaluación técnica resulta NO Aprobada
         // ======================================
         [HttpPost("{id}/comunicacion-rechazo")]
         [Authorize(Roles = "Direccion,Admin")]
-        public async Task<ActionResult<object>> GenerarComunicacionRechazo(int id)
+        public async Task<ActionResult<object>> GenerarComunicacionRechazo(int id, [FromBody] GenerarComunicacionRechazoDto? dto)
         {
             var solicitud = await _context.Solicitudes
                 .Include(s => s.Usuario)
@@ -906,7 +866,6 @@ namespace ControlTec.Controllers
             if (solicitud == null)
                 return NotFound("Solicitud no encontrada.");
 
-            // Solo se permite generar la comunicación cuando está en RechazadaET
             if (!string.Equals(solicitud.Estado, EstadosSolicitud.RechazadaET, StringComparison.OrdinalIgnoreCase))
                 return BadRequest("Solo se puede generar la comunicación de rechazo para solicitudes en estado RechazadaET.");
 
@@ -915,14 +874,18 @@ namespace ControlTec.Controllers
             if (usuario == null)
                 return BadRequest("El usuario que genera la comunicación no existe.");
 
-            // Generar el PDF de comunicación de rechazo
+            // ✅ el service genera y devuelve una ruta web (recomendado: dentro de wwwroot)
             var ruta = await _rechazoService.GenerarComunicacionRechazoAsync(id);
 
-            // Pasar de RechazadaET -> Rechazada (estado final visible al usuario)
+            // ✅ guardar la ruta en la solicitud para que el solicitante la vea en /detalle
+            solicitud.RutaComunicacionRechazo = ruta;
+
             var estadoAnterior = solicitud.Estado;
             solicitud.Estado = EstadosSolicitud.Rechazada;
 
-            var comentario = $"Comunicación de rechazo generada por {usuario.Roll}.";
+            var comentario = string.IsNullOrWhiteSpace(dto?.Comentario)
+                ? $"Comunicación de rechazo generada por {usuario.Roll}."
+                : dto!.Comentario;
 
             var nuevoHistorial = new HistorialEstado
             {
@@ -941,7 +904,7 @@ namespace ControlTec.Controllers
             {
                 solicitud.Id,
                 solicitud.Estado,
-                RutaComunicacionRechazo = ruta,
+                RutaComunicacionRechazo = solicitud.RutaComunicacionRechazo,
                 Historial = new
                 {
                     nuevoHistorial.Id,

@@ -19,8 +19,6 @@ namespace ControlTec.Services
         {
             _context = context;
             _env = env;
-
-            // Licencia Community de QuestPDF
             QuestPDF.Settings.License = LicenseType.Community;
         }
 
@@ -37,10 +35,6 @@ namespace ControlTec.Services
             if (solicitud.Usuario == null || solicitud.Servicio == null)
                 throw new Exception("Datos incompletos para generar certificado.");
 
-            // ============================
-            // 1. Ruta física y relativa
-            //    /uploads/certificados/{SolicitudId}/Certificado_{id}.pdf
-            // ============================
             var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
             var carpetaCertificados = Path.Combine(webRoot, "uploads", "certificados", solicitudId.ToString());
 
@@ -53,61 +47,57 @@ namespace ControlTec.Services
 
             var fechaHoy = DateTime.Now;
 
-            // ============================
-            // 2. Definición del documento
-            // ============================
+            var logoPath = Path.Combine(webRoot, "img", "logo_sns.png");
+
             var doc = Document.Create(container =>
             {
                 container.Page(page =>
                 {
-                    page.Margin(40);
                     page.Size(PageSizes.A4);
+                    page.Margin(40);
                     page.PageColor(Colors.White);
-                    page.DefaultTextStyle(x => x.FontSize(12));
+                    page.DefaultTextStyle(x => x.FontFamily("Arial").FontSize(12));
+
+                    page.Header().Row(row =>
+                    {
+                        row.RelativeItem().AlignCenter().Height(90).Image(logoPath, ImageScaling.FitArea);
+                    });
 
                     page.Content().Column(col =>
                     {
-                        col.Spacing(10);
+                        col.Spacing(12);
 
                         col.Item().Text("MINISTERIO DE SALUD PÚBLICA")
-                            .FontSize(16).SemiBold();
+                            .FontSize(16).SemiBold().AlignCenter();
 
                         col.Item().Text("UNIDAD DE PRODUCTOS CONTROLADOS (UPC)")
-                            .FontSize(14);
+                            .FontSize(14).AlignCenter();
 
                         col.Item().Text($"Certificado de {solicitud.Servicio.Nombre}")
-                            .FontSize(14).SemiBold();
+                            .FontSize(14).SemiBold().AlignCenter();
 
-                        col.Item().Text($"No. de solicitud: {solicitud.Id}");
+                        col.Item().LineHorizontal(1).LineColor(Colors.Grey.Lighten2);
+
+                        col.Item().Text($"No. de solicitud: {solicitud.Id}").Bold();
                         col.Item().Text($"Fecha de emisión: {fechaHoy:dd/MM/yyyy}");
-
                         col.Item().Text($"Nombre del solicitante: {solicitud.Usuario.Nombre}");
                         col.Item().Text($"Cédula/RNC: {solicitud.Usuario.Cedula}");
                         col.Item().Text($"Correo de contacto: {solicitud.Usuario.Correo}");
-
                         col.Item().Text($"Servicio: {solicitud.Servicio.Nombre}");
                         col.Item().Text($"Descripción: {solicitud.Servicio.Descripcion}");
 
-                        col.Item().Text(
-                            "Por medio del presente documento se certifica que la solicitud indicada " +
-                            "ha cumplido con los requisitos establecidos por la Unidad de Productos " +
-                            "Controlados, y se autoriza la emisión del certificado correspondiente.");
+                        col.Item().PaddingVertical(10).Text(
+                            "Por medio del presente documento se certifica que la solicitud indicada ha cumplido con los requisitos establecidos por la Unidad de Productos Controlados, y se autoriza la emisión del certificado correspondiente."
+                        ).Italic();
 
-                        col.Item().Text("");
-                        col.Item().Text("______________________________");
-                        col.Item().Text("Dirección de Productos Controlados");
+                        col.Item().PaddingTop(40).AlignCenter().Text("______________________________");
+                        col.Item().AlignCenter().Text("Dirección de Productos Controlados");
                     });
                 });
             });
 
-            // ============================
-            // 3. Generar PDF en disco
-            // ============================
             doc.GeneratePdf(rutaFisica);
 
-            // ============================
-            // 4. Guardar ruta en la solicitud
-            // ============================
             solicitud.RutaCertificado = rutaRelativa;
             await _context.SaveChangesAsync();
 
