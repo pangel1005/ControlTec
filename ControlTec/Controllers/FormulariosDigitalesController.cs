@@ -2,6 +2,7 @@
 using ControlTec.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace ControlTec.Controllers
 {
@@ -16,11 +17,25 @@ namespace ControlTec.Controllers
         }
 
         // GET: api/FormulariosDigitales/subservicio/5
+        [Authorize(Roles = "Solicitante,Admin")]
         [HttpGet("subservicio/{subservicioId}")]
         public async Task<ActionResult<FormularioDigital?>> GetFormularioPorSubservicio(int subservicioId)
         {
             var form = await _context.FormulariosDigitales
                 .FirstOrDefaultAsync(f => f.SubservicioId == subservicioId);
+            if (form == null)
+                return NotFound();
+            return form;
+        }
+
+        // GET: api/FormulariosDigitales/5
+        // Usado desde el detalle de solicitud para mostrar los campos del formulario en solo lectura
+        // Permite que el solicitante, usuario y todos los roles internos puedan consultarlo
+        [Authorize(Roles = "Usuario,Solicitante,VUS,TecnicoUPC,EncargadoUPC,DNCD,Direccion,Admin")]
+        [HttpGet("{id}")]
+        public async Task<ActionResult<FormularioDigital?>> GetFormulario(int id)
+        {
+            var form = await _context.FormulariosDigitales.FindAsync(id);
             if (form == null)
                 return NotFound();
             return form;
