@@ -22,9 +22,21 @@ export default function Login() {
 
     try {
       const user = await login(correo, password);
+      console.log("Login response:", user);
 
       if (!user) {
+        console.error("No user received from backend.");
         throw new Error("No se recibió el usuario desde el backend.");
+      }
+
+      if (user.requires2FA) {
+        console.log("2FA required, redirecting...");
+        // Guardar el sessionToken para el paso de verificación
+        if (user.sessionToken) {
+          localStorage.setItem("sessionToken2FA", user.sessionToken);
+        }
+        navigate("/verify-2fa");
+        return;
       }
 
       // Normalizamos el rol

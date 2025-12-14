@@ -31,7 +31,6 @@ export function AuthProvider({ children }) {
 
   // 🔹 Login usando la API real
   const login = async (correo, password) => {
-    // IMPORTANTE: esta es la ruta real de tu backend
     const res = await api.post("/api/Auth/login", {
       correo,
       password,
@@ -39,7 +38,11 @@ export function AuthProvider({ children }) {
 
     const data = res.data || {};
 
-    // Flexibilidad por si el backend cambia nombres de campos
+    // Si requiere 2FA, devolvemos el objeto tal cual
+    if (data.requires2FA) {
+      return data;
+    }
+
     const jwt = data.token || data.accessToken || data.jwt;
     const user =
       data.usuario ||
@@ -60,10 +63,9 @@ export function AuthProvider({ children }) {
 
     api.defaults.headers.common.Authorization = `Bearer ${jwt}`;
 
-    // 👉 devolvemos SIEMPRE el usuario para que Login.jsx
-    // pueda leer el rol y redirigir
     return user;
   };
+
 
   // 🔹 Registro (solo crea el usuario)
   const register = async (payload) => {
@@ -92,9 +94,32 @@ export function AuthProvider({ children }) {
     delete api.defaults.headers.common.Authorization;
   };
 
+  const verify2FA = async (codigo, sessionToken) => {
+    const res = await api.post("/api/Auth/login/verify-2fa", { codigo, sessionToken });
+    const data = res.data || {};
+
+    const jwt = data.token || data.accessToken || data.jwt;
+    const user = data.usuario || data.user || data.usuarioDTO || null;
+
+    if (!jwt || !user) {
+      throw new Error("Verificación 2FA fallida.");
+    }
+
+    setToken(jwt);
+    setUsuario(user);
+
+    localStorage.setItem("token", jwt);
+    localStorage.setItem("usuario", JSON.stringify(user));
+
+    api.defaults.headers.common.Authorization = `Bearer ${jwt}`;
+
+    return user;
+  };
+
+
   return (
     <AuthContext.Provider
-      value={{ usuario, token, loading, login, logout, register }}
+      value={{ usuario, token, loading, login, logout, register, verify2FA }}
     >
       {children}
     </AuthContext.Provider>

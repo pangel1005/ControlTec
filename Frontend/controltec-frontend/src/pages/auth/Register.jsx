@@ -54,15 +54,8 @@ export default function Register() {
 
     try {
       setLoading(true);
-      await register(payload);
-
-      setSuccess(
-        "Usuario registrado correctamente. En una siguiente versión se agregará la verificación por correo."
-      );
-
-      setTimeout(() => {
-        navigate("/login");
-      }, 1500);
+      const res = await register(payload);
+      navigate("/verify-email", { state: { correo: payload.correo } });
     } catch (err) {
       console.error(err);
       const msg =

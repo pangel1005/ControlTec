@@ -11,6 +11,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 
 import Login from "../pages/auth/Login.jsx";
 import Register from "../pages/auth/Register.jsx";
+import Verify2FA from "../pages/auth/Verify2FA.jsx";
 
 import AdminDashboard from "../pages/admin/AdminDashboard.jsx";
 import AdminServicios from "../pages/admin/AdminServicios.jsx";
@@ -35,6 +36,7 @@ export default function App() {
       <Routes>
         {/* Login público */}
         <Route path="/login" element={<Login />} />
+        <Route path="/verify-2fa" element={<Verify2FA />} />
 
         {/* Rutas protegidas */}
         <Route

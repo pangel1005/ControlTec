@@ -178,20 +178,38 @@ namespace ControlTec.Controllers
         }
 
         // ============================
-        // GET: api/Auth/confirm-email
+        // POST: api/Auth/confirm-email
         // ============================
-        [HttpGet("confirm-email")]
+        [HttpPost("confirm-email")]
         [AllowAnonymous]
-        public async Task<IActionResult> ConfirmEmail([FromQuery] string correo, [FromQuery] string token)
+        public async Task<IActionResult> ConfirmEmail([FromBody] ConfirmEmailDto dto)
         {
-            var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Correo == correo);
+            var user = await _context.Usuarios.FirstOrDefaultAsync(u => u.Correo == dto.Email);
             if (user == null)
                 return NotFound("Usuario no encontrado.");
 
             if (user.EmailConfirmado)
-                return Ok("El correo ya fue confirmado.");
+            {
+                // Si ya está confirmado, devolver JWT y usuario
+                var jwt = CrearJwt(user);
+                return Ok(new
+                {
+                    token = jwt,
+                    usuario = new
+                    {
+                        user.Id,
+                        user.Nombre,
+                        user.Correo,
+                        user.Roll,
+                        user.Cedula,
+                        user.Activo,
+                        user.EsInternoPendiente,
+                        user.EmailConfirmado
+                    }
+                });
+            }
 
-            if (user.EmailConfirmacionToken != token ||
+            if (user.EmailConfirmacionToken != dto.Token ||
                 user.EmailConfirmacionExpira == null ||
                 DateTime.UtcNow > user.EmailConfirmacionExpira)
             {
@@ -205,7 +223,23 @@ namespace ControlTec.Controllers
 
             await _context.SaveChangesAsync();
 
-            return Ok("Correo confirmado correctamente.");
+            // Devolver JWT y usuario tras confirmar
+            var jwtNuevo = CrearJwt(user);
+            return Ok(new
+            {
+                token = jwtNuevo,
+                usuario = new
+                {
+                    user.Id,
+                    user.Nombre,
+                    user.Correo,
+                    user.Roll,
+                    user.Cedula,
+                    user.Activo,
+                    user.EsInternoPendiente,
+                    user.EmailConfirmado
+                }
+            });
         }
 
         // ============================

@@ -12,6 +12,9 @@ import Navbar from "./components/Navbar";
 // Auth
 import Login from "./pages/auth/Login.jsx";
 import Register from "./pages/auth/Register.jsx";
+import Verify2FA from "./pages/auth/Verify2FA.jsx";
+import EmailConfirmation from "./pages/auth/EmailConfirmation.jsx";
+import ConfirmEmail from "./pages/auth/ConfirmEmail.jsx";
 
 // Solicitante
 import MisSolicitudes from "./pages/solicitante/MisSolicitudes.jsx";
@@ -50,6 +53,7 @@ import "./styles/solicitudes.css";
 
 function AppInner() {
   const location = useLocation();
+  console.log("[AppInner] pathname:", location.pathname);
   const isAuthRoute =
     location.pathname === "/login" || location.pathname === "/registro";
 
@@ -62,6 +66,9 @@ function AppInner() {
           {/* Públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/registro" element={<Register />} />
+          <Route path="/verify-2fa" element={<Verify2FA />} />
+          <Route path="/verify-email" element={<EmailConfirmation />} />
+          <Route path="/confirm-email" element={<ConfirmEmail />} />
 
           {/* Admin */}
           <Route
