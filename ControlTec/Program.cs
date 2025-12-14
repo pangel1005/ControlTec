@@ -10,7 +10,7 @@ using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. AUTENTICACI?N JWT
+// 1. AUTENTICACIÓN JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -85,11 +85,9 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// 6. INYECCI?N DE DEPENDENCIAS DE SERVICIOS
+// 6. INYECCIÓN DE DEPENDENCIAS DE SERVICIOS
 builder.Services.AddScoped<ICertificadoService, CertificadoService>();
 builder.Services.AddScoped<IComunicacionRechazoService, ComunicacionRechazoService>();
-builder.Services.AddScoped<ControlTec.Services.EmailService>();
-builder.Services.AddScoped<EmailService>();
 
 var app = builder.Build();
 
