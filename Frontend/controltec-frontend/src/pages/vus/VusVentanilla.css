@@ -1,0 +1,273 @@
+/* src/pages/vus/VusVentanilla.css */
+
+:root {
+  --vs-primary: #289c2e;
+  /* Green header color */
+  --vs-bg: #f5f7fa;
+  /* Main background */
+  --vs-card-bg: #ffffff;
+  --vs-text: #333333;
+  --vs-border: #e0e0e0;
+  --vs-radius: 8px;
+  --vs-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+/* Base Container with high specificity baseline */
+.vs-page-container {
+  padding: 2rem !important;
+  background-color: var(--vs-bg) !important;
+  min-height: calc(100vh - 64px) !important;
+  font-family: 'Segoe UI', sans-serif !important;
+  color: var(--vs-text) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 2rem !important;
+}
+
+
+/* ===========================
+   TOP SECTION: SEARCH 
+   =========================== */
+.vs-page-container .vs-search-section {
+  background: var(--vs-card-bg) !important;
+  padding: 1.5rem 2rem !important;
+  border-radius: var(--vs-radius) !important;
+  box-shadow: var(--vs-shadow) !important;
+  border: 1px solid var(--vs-border) !important;
+}
+
+.vs-page-container .vs-section-title {
+  margin: 0 0 1rem 0 !important;
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+}
+
+.vs-page-container .vs-search-box {
+  display: flex !important;
+  gap: 1rem !important;
+  align-items: center !important;
+}
+
+.vs-page-container .vs-search-input {
+  flex: 1 !important;
+  padding: 0.75rem 1rem !important;
+  font-size: 0.95rem !important;
+  border: 1px solid #d1d5db !important;
+  border-radius: 4px !important;
+  background-color: #f9fafb !important;
+  outline: none !important;
+  transition: border 0.2s !important;
+  box-shadow: none !important;
+}
+
+.vs-page-container .vs-search-input:focus {
+  border-color: var(--vs-primary) !important;
+  background-color: #ffffff !important;
+}
+
+.vs-page-container .vs-search-btn {
+  background-color: var(--vs-primary) !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0.75rem 1.5rem !important;
+  border-radius: 4px !important;
+  font-weight: 600 !important;
+  font-size: 0.95rem !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.5rem !important;
+  transition: background 0.2s !important;
+  box-shadow: none !important;
+}
+
+.vs-page-container .vs-search-btn:hover {
+  background-color: #228627 !important;
+}
+
+.vs-page-container .vs-search-btn::before {
+  content: "🔍";
+  font-size: 0.9rem !important;
+}
+
+/* ===========================
+   BOTTOM SECTION: TABLE 
+   =========================== */
+.vs-page-container .vs-table-section {
+  background: var(--vs-card-bg) !important;
+  border-radius: var(--vs-radius) !important;
+  box-shadow: var(--vs-shadow) !important;
+  border: 1px solid var(--vs-border) !important;
+  padding: 1.5rem 2rem 2rem !important;
+}
+
+.vs-page-container .vs-table-header-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.vs-page-container .vs-pill-count {
+  background-color: #e3f2fd !important;
+  color: #1976d2 !important;
+  font-size: 0.85rem !important;
+  font-weight: 600 !important;
+  padding: 0.4rem 1rem !important;
+  border-radius: 999px !important;
+  border: 1px solid #bbdefb !important;
+}
+
+.vs-page-container .vs-table-wrapper {
+  border-radius: 6px !important;
+  overflow: hidden !important;
+  border: 1px solid var(--vs-border) !important;
+}
+
+.vs-page-container .vs-table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  text-align: left !important;
+}
+
+/* Green Header like Mockup */
+.vs-page-container .vs-table thead {
+  background-color: var(--vs-primary) !important;
+  color: #ffffff !important;
+}
+
+.vs-page-container .vs-table th {
+  padding: 1rem 1.5rem !important;
+  font-weight: 500 !important;
+  font-size: 0.9rem !important;
+  letter-spacing: 0.5px !important;
+  background-color: var(--vs-primary) !important;
+  /* Force bg again */
+  color: #ffffff !important;
+  border: none !important;
+}
+
+.vs-page-container .vs-table tbody tr {
+  border-bottom: 1px solid #f0f0f0 !important;
+  transition: background 0.1s !important;
+  background-color: transparent !important;
+}
+
+.vs-page-container .vs-table tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+.vs-page-container .vs-table tbody tr:hover {
+  background-color: #f8fbff !important;
+}
+
+.vs-page-container .vs-table td {
+  padding: 1.25rem 1.5rem !important;
+  font-size: 0.9rem !important;
+  color: #4b5563 !important;
+  vertical-align: middle !important;
+  background-color: transparent !important;
+}
+
+/* Column specifics */
+.vs-page-container .vs-col-id {
+  font-weight: 600 !important;
+  color: #374151 !important;
+}
+
+.vs-page-container .vs-col-servicio {
+  color: #111827 !important;
+  font-weight: 500 !important;
+}
+
+/* Badges (Pill shape, soft colors) */
+.vs-page-container .vs-badge {
+  display: inline-block !important;
+  padding: 0.35rem 1rem !important;
+  border-radius: 999px !important;
+  font-size: 0.75rem !important;
+  font-weight: 700 !important;
+  text-align: center !important;
+  min-width: 80px !important;
+}
+
+.vs-page-container .vs-badge-success {
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+  border: none !important;
+}
+
+.vs-page-container .vs-badge-warning {
+  background-color: #fef3c7 !important;
+  color: #92400e !important;
+  border: none !important;
+}
+
+.vs-page-container .vs-badge-danger {
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+  border: none !important;
+}
+
+.vs-page-container .vs-badge-neutral {
+  background-color: #f3f4f6 !important;
+  color: #374151 !important;
+  border: none !important;
+}
+
+/* Actions Button (Outline/Ghost) */
+.vs-page-container .vs-btn-details {
+  background-color: transparent !important;
+  border: 1px solid #e5e7eb !important;
+  padding: 0.4rem 1rem !important;
+  border-radius: 4px !important;
+  color: #374151 !important;
+  font-size: 0.85rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  transition: all 0.2s !important;
+  display: inline-block !important;
+}
+
+.vs-page-container .vs-btn-details:hover {
+  background-color: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+/* Helper */
+.vs-page-container .text-right {
+  text-align: right !important;
+}
+
+.vs-page-container .vs-empty-row {
+  text-align: center !important;
+  padding: 3rem !important;
+  color: #888 !important;
+  font-style: italic !important;
+}
+
+/* Loading/Error */
+.vs-page-container .vs-loading,
+.vs-page-container .vs-error {
+  text-align: center !important;
+  padding: 2rem !important;
+  color: #666 !important;
+}
+
+.vs-page-container .vs-error {
+  color: red !important;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .vs-page-container .vs-search-box {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  .vs-page-container .vs-table-wrapper {
+    overflow-x: auto !important;
+  }
+}

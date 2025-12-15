@@ -1,0 +1,237 @@
+/* src/pages/solicitante/NuevaSolicitud.css */
+
+:root {
+  --ns-primary: #289c2e;
+  --ns-primary-dark: #1e7a23;
+  --ns-bg: #f4f7f6;
+  --ns-text: #111827;
+  --ns-text-muted: #6b7280;
+  --ns-white: #ffffff;
+  --ns-border: #e5e7eb;
+  --ns-radius: 16px;
+  --ns-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.ns-page-container {
+  padding: 2rem;
+  background-color: var(--ns-bg);
+  min-height: calc(100vh - 64px);
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ================= HEADER ================= */
+
+.ns-header-container {
+  margin-bottom: 2.5rem;
+}
+
+.ns-header-content {
+  animation: nsSlideDown 0.6s ease-out forwards;
+}
+
+.ns-title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 0 0 .4rem;
+}
+
+.ns-subtitle {
+  font-size: 1rem;
+  color: var(--ns-text-muted);
+}
+
+/* ================= GRID ================= */
+
+.ns-services-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.75rem;
+}
+
+@media (max-width: 1100px) {
+  .ns-services-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================= CARD ================= */
+
+.ns-card {
+  background: var(--ns-white);
+  border-radius: var(--ns-radius);
+  border: 1px solid var(--ns-border);
+  box-shadow: var(--ns-shadow);
+  padding: 1.4rem 1.4rem 1.2rem;
+  position: relative;
+
+  opacity: 0;
+  animation: nsCardEnter .55s cubic-bezier(.2,1,.2,1) forwards;
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+
+.ns-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, var(--ns-primary), #34d399);
+}
+
+.ns-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12);
+  border-color: rgba(40,156,46,.4);
+}
+
+.ns-card-header {
+  margin-bottom: .75rem;
+  padding-bottom: .75rem;
+  border-bottom: 1px solid var(--ns-border);
+}
+
+.ns-card-title {
+  font-size: 1.15rem;
+  font-weight: 800;
+  margin: .25rem 0;
+}
+
+/* ================= CONTENT ================= */
+
+.ns-desc {
+  font-size: .95rem;
+  color: #4b5563;
+  line-height: 1.55;
+  margin-bottom: 1rem;
+}
+
+.ns-reqbox {
+  border: 1px dashed rgba(17,24,39,.2);
+  border-radius: 14px;
+  background: #f9fafb;
+  padding: 1rem;
+  margin-bottom: 1.1rem;
+}
+
+.ns-reqs-title {
+  font-size: .8rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: var(--ns-primary-dark);
+  margin-bottom: .6rem;
+}
+
+.ns-reqs-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: .45rem;
+}
+
+.ns-reqs-list li {
+  display: flex;
+  gap: .5rem;
+  font-size: .9rem;
+  color: #374151;
+}
+
+.ns-reqs-list li::before {
+  content: "✓";
+  color: var(--ns-primary-dark);
+  font-weight: 900;
+}
+
+/* ================= BUTTONS ================= */
+
+.ns-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: .8rem;
+}
+
+.ns-btn {
+  border-radius: 12px;
+  padding: .75rem 1rem;
+  font-weight: 800;
+  cursor: pointer;
+  border: none;
+  transition: all .18s ease;
+}
+
+.ns-btn-primary {
+  background: var(--ns-primary);
+  color: #fff;
+}
+
+.ns-btn-primary:hover {
+  background: var(--ns-primary-dark);
+  box-shadow: 0 12px 20px rgba(40,156,46,.25);
+  transform: translateY(-1px);
+}
+
+.ns-btn-outline {
+  background: #fff;
+  border: 1px solid #d1d5db;
+}
+
+.ns-btn-outline:hover {
+  background: #f3f4f6;
+}
+
+.ns-btn-danger {
+  background: #fff;
+  border: 1px solid #ef4444;
+  color: #b91c1c;
+}
+
+.ns-btn-danger:hover {
+  background: #fee2e2;
+}
+
+.ns-btn:disabled {
+  background: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* ================= UPLOAD ================= */
+
+.ns-upload-section {
+  margin-top: 1rem;
+  animation: nsExpand .3s ease-out;
+}
+
+.ns-dropzone {
+  border: 1px dashed rgba(40,156,46,.5);
+  background: rgba(40,156,46,.05);
+  border-radius: 14px;
+  padding: 1rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.ns-file-item {
+  background: #fff;
+  border: 1px solid #d1d5db;
+  border-radius: 999px;
+  padding: .3rem .6rem;
+  font-size: .8rem;
+  display: inline-block;
+  margin: .25rem;
+}
+
+/* ================= ANIMATIONS ================= */
+
+@keyframes nsSlideDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nsCardEnter {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes nsExpand {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}

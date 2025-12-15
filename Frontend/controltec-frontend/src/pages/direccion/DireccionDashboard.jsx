@@ -1,0 +1,207 @@
+// src/pages/direccion/DireccionDashboard.jsx
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import api from "../../api/apiClient";
+import { useAuth } from "../../context/AuthContext";
+
+const normalizar = (s = "") =>
+  s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export default function DireccionDashboard() {
+  const { usuario } = useAuth();
+  const navigate = useNavigate();
+
+  const [solicitudes, setSolicitudes] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const ESTADO_APROBACION_DNCD = "Aprobación DNCD";
+  const ESTADO_RECHAZADA_ET = "RechazadaET";
+
+  useEffect(() => {
+    const cargarSolicitudes = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        // El backend ya filtra por rol Direccion -> Aprobación DNCD y RechazadaET
+        const res = await api.get("/api/Solicitudes");
+        const data = res.data || [];
+
+        setSolicitudes(data);
+      } catch (err) {
+        console.error("Error cargando solicitudes Dirección:", err);
+        const status = err.response?.status;
+
+        if (status === 401) {
+          setError("Tu sesión ha expirado. Vuelve a iniciar sesión.");
+        } else if (status === 403) {
+          setError(
+            "No tienes permiso para ver estas solicitudes. Verifica que el rol Dirección tenga acceso al endpoint /api/Solicitudes."
+          );
+        } else {
+          setError("No se pudieron cargar las solicitudes.");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    cargarSolicitudes();
+  }, []);
+
+  const formatFecha = (fechaStr) => {
+    if (!fechaStr) return "-";
+    const d = new Date(fechaStr);
+    if (Number.isNaN(d.getTime())) return "-";
+    return d.toLocaleString("es-DO", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  const getEstadoClass = (estado = "") => {
+    const e = estado.toLowerCase();
+    if (e.includes("rechaz")) return "badge badge-danger";
+    if (e.includes("aprob")) return "badge badge-success";
+    if (e.includes("devuelt")) return "badge badge-warning";
+    return "badge badge-warning";
+  };
+
+  const rolTexto = (usuario?.roll ?? usuario?.Roll ?? "").trim();
+
+  const enAprobacionDncd = solicitudes.filter(
+    (s) => normalizar(s.estado) === "aprobacion dncd"
+  );
+
+  const enRechazadaEt = solicitudes.filter(
+    (s) => normalizar(s.estado) === "rechazadaet"
+  );
+
+  return (
+    <div className="ct-app">
+      <div className="ct-page-container">
+        <header className="ct-header">
+          <div className="ct-title-group">
+            <h1 className="ct-title">Bandeja Dirección</h1>
+            <p className="ct-subtitle">
+              Aquí revisas las solicitudes aprobadas por DNCD (
+              <strong>{ESTADO_APROBACION_DNCD}</strong>) para emitir certificado o
+              tomar decisión final, y las solicitudes en{" "}
+              <strong>{ESTADO_RECHAZADA_ET}</strong> para generar la comunicación
+              de rechazo.
+            </p>
+          </div>
+        </header>
+        {loading ? (
+          <p className="ct-loading">Cargando solicitudes...</p>
+        ) : error ? (
+          <p className="ct-error">{error}</p>
+        ) : (
+          <>
+            {/* Bloque 1: Aprobación DNCD */}
+            <section className="ct-card">
+              <div className="ct-card-head">
+                <h2 className="ct-card-title">Solicitudes en Aprobación DNCD</h2>
+                <span className="ct-badge ct-badge-neutral">{enAprobacionDncd.length} registro(s)</span>
+              </div>
+              <div className="ct-card-body">
+                <div className="ct-table-wrap">
+                  <table className="ct-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "70px" }}>ID</th>
+                        <th>Servicio</th>
+                        <th style={{ width: "190px" }}>Solicitante</th>
+                        <th style={{ width: "140px" }}>Estado</th>
+                        <th style={{ width: "190px" }}>Fecha creación</th>
+                        <th style={{ width: "80px" }}></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {enAprobacionDncd.map((s) => (
+                        <tr key={s.id}>
+                          <td>{s.id}</td>
+                          <td>{s.servicio?.nombre}</td>
+                          <td>{s.usuario?.nombre ?? "N/D"}</td>
+                          <td>
+                            <span className={getEstadoClass(s.estado)}>{s.estado}</span>
+                          </td>
+                          <td>{formatFecha(s.fechaCreacion)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              className="ct-btn-details"
+                              onClick={() => navigate(`/solicitudes/${s.id}`)}
+                            >
+                              Ver
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+
+            {/* Bloque 2: Rechazada ET */}
+            <section className="ct-card">
+              <div className="ct-card-head">
+                <h2 className="ct-card-title">Solicitudes para Comunicación de Rechazo</h2>
+                <span className="ct-badge ct-badge-neutral">{enRechazadaEt.length} registro(s)</span>
+              </div>
+              <div className="ct-card-body">
+                {enRechazadaEt.length === 0 ? (
+                  <p className="ct-empty">
+                    No hay solicitudes en estado <strong>{ESTADO_RECHAZADA_ET}</strong> para generar comunicación de rechazo.
+                  </p>
+                ) : (
+                  <div className="ct-table-wrap">
+                    <table className="ct-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: "70px" }}>ID</th>
+                          <th>Servicio</th>
+                          <th style={{ width: "190px" }}>Solicitante</th>
+                          <th style={{ width: "140px" }}>Estado</th>
+                          <th style={{ width: "190px" }}>Fecha creación</th>
+                          <th style={{ width: "80px" }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {enRechazadaEt.map((s) => (
+                          <tr key={s.id}>
+                            <td>{s.id}</td>
+                            <td>{s.servicio?.nombre}</td>
+                            <td>{s.usuario?.nombre ?? "N/D"}</td>
+                            <td>
+                              <span className={getEstadoClass(s.estado)}>{s.estado}</span>
+                            </td>
+                            <td>{formatFecha(s.fechaCreacion)}</td>
+                            <td>
+                              <button
+                                type="button"
+                                className="ct-btn-details"
+                                onClick={() => navigate(`/solicitudes/${s.id}`)}
+                              >
+                                Ver
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

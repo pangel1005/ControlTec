@@ -1,0 +1,352 @@
+/* src/pages/solicitante/FormularioDigital.css */
+
+:root {
+  --fd-primary: #289c2e;
+  --fd-primary-dark: #1e7a23;
+
+  --fd-bg: #f9fafb;
+  --fd-card: #ffffff;
+  --fd-text: #111827;
+  --fd-muted: #6b7280;
+
+  --fd-border: #e5e7eb;
+  --fd-radius: 14px;
+  --fd-shadow: 0 10px 22px rgba(0, 0, 0, 0.06);
+}
+
+/* Page */
+.fd-page {
+  background: var(--fd-bg);
+  min-height: calc(100vh - 64px);
+  padding: 2rem 2rem;
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+.fd-container {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+/* Header */
+.fd-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: 0.75rem 0 1.5rem 0;
+  opacity: 0;
+  transform: translateY(-10px);
+  animation: fdEnter 0.5s ease-out forwards;
+}
+
+.fd-title {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--fd-text);
+  letter-spacing: -0.02em;
+}
+
+.fd-subtitle {
+  margin: 0.35rem 0 0 0;
+  color: var(--fd-muted);
+  font-size: 0.95rem;
+}
+
+/* Layout */
+.fd-layout {
+  display: grid;
+  grid-template-columns: 1.65fr 0.95fr;
+  gap: 1.25rem;
+  align-items: start;
+}
+
+/* Cards */
+.fd-card {
+  background: var(--fd-card);
+  border: 1px solid var(--fd-border);
+  border-radius: var(--fd-radius);
+  box-shadow: var(--fd-shadow);
+
+  /* 🔧 FIX: no recortar bordes dashed/hover */
+  overflow: visible;
+
+  opacity: 0;
+  transform: translateY(14px);
+  animation: fdEnterUp 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.fd-card + .fd-card {
+  margin-top: 1rem;
+}
+
+.fd-card-head {
+  padding: 1.1rem 1.25rem;
+  border-bottom: 1px solid var(--fd-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.fd-card-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--fd-text);
+}
+
+.fd-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #14532d;
+  background: #dcfce7;
+  border: 1px solid #bbf7d0;
+}
+
+.fd-card-body {
+  padding: 1.1rem 1.25rem;
+}
+
+/* Requisitos */
+.fd-reqs-title {
+  margin: 0 0 0.6rem 0;
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #374151;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.fd-reqs-list {
+  margin: 0;
+  padding-left: 1.05rem;
+  color: #374151;
+  font-size: 0.9rem;
+}
+
+.fd-reqs-list li + li {
+  margin-top: 0.35rem;
+}
+
+.fd-reqs-empty {
+  margin: 0;
+  color: var(--fd-muted);
+  font-size: 0.9rem;
+}
+
+/* Form */
+.fd-form {
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.fd-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem 1rem;
+}
+
+/* Reutiliza tus .form-group del proyecto, solo lo acomodamos en grid */
+.fd-field {
+  margin: 0 !important;
+}
+
+.fd-span-2 {
+  grid-column: 1 / -1;
+}
+
+/* Inputs/Selects dentro del formulario */
+.fd-form .form-group label {
+  display: inline-block;
+  font-weight: 700;
+  font-size: 0.85rem;
+  color: #374151;
+  margin-bottom: 0.35rem;
+}
+
+.fd-form .form-group input[type="text"],
+.fd-form .form-group input[type="email"],
+.fd-form .form-group input[type="number"],
+.fd-form .form-group select,
+.fd-form .form-group textarea {
+  width: 100%;
+  border: 1px solid var(--fd-border);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  outline: none;
+  background: #fff;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+}
+
+.fd-form .form-group input:focus,
+.fd-form .form-group select:focus,
+.fd-form .form-group textarea:focus {
+  border-color: #86efac;
+  box-shadow: 0 0 0 4px rgba(34, 197, 94, 0.15);
+}
+
+/* Checkbox estilo compacto */
+.fd-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--fd-border);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.fd-checkbox input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--fd-primary);
+}
+
+.fd-checkbox span {
+  font-size: 0.9rem;
+  color: #374151;
+  font-weight: 600;
+}
+
+/* Upload */
+.fd-upload {
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed var(--fd-border);
+}
+
+/* 🔧 FIX: el dropzone debe ser bloque y no recortarse */
+.fd-dropzone {
+  display: block;
+  width: 100%;
+  border: 2px dashed #9ca3af;
+  border-radius: var(--fd-radius);
+  padding: 1.2rem;
+  background: #f8fafc;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  position: relative;
+  overflow: visible;
+}
+
+.fd-dropzone:hover {
+  border-color: var(--fd-primary);
+  background: #f0fdf4;
+}
+
+.fd-dropzone-title {
+  margin: 0;
+  font-weight: 800;
+  color: #111827;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.fd-dropzone-sub {
+  margin: 0.35rem 0 0 0;
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.fd-file-input {
+  display: none;
+}
+
+.fd-file-list {
+  margin: 0.9rem 0 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.fd-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--fd-border);
+  border-radius: 10px;
+  background: #ffffff;
+}
+
+.fd-file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  color: #374151;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fd-file-remove {
+  border: none;
+  background: transparent;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  padding: 0 0.25rem;
+}
+
+/* Acciones */
+.fd-actions {
+  margin-top: 1rem;
+}
+
+/* 🔧 FIX: botón full ancho y separado correctamente */
+.fd-actions .btn-primary {
+  width: 100%;
+  display: block;
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+}
+
+/* Animations */
+@keyframes fdEnter {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fdEnterUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fd-header,
+  .fd-card {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .fd-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .fd-page {
+    padding: 1.25rem 1rem;
+  }
+
+  .fd-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,147 @@
+/* =========================================================
+   src/styles/layout.css
+   🧱 Helpers de layout (solo estructura)
+   ✔ Scoped con .ct-app (NO pisa solicitante/detalle)
+   ✔ Grid / Flex / Spacing / Responsive
+   ⚠ No redefine ct-page-container (eso vive en global.css)
+========================================================= */
+
+/* ================================
+   CONTAINERS
+================================ */
+.ct-app .ct-container {
+  max-width: 1240px;      /* mismo estándar del sistema */
+  margin: 0 auto;
+  padding: 0 2rem;
+}
+
+@media (max-width: 900px) {
+  .ct-app .ct-container {
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .ct-app .ct-container {
+    padding: 0 1rem;
+  }
+}
+
+/* ================================
+   FLEX HELPERS
+================================ */
+.ct-app .ct-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ct-app .ct-row-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.ct-app .ct-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.ct-app .ct-wrap {
+  flex-wrap: wrap;
+}
+
+.ct-app .ct-center {
+  display: grid;
+  place-items: center;
+}
+
+/* ================================
+   GRID HELPERS
+================================ */
+.ct-app .ct-grid {
+  display: grid;
+  gap: 1.5rem;
+}
+
+/* patrón tipo NuevaSolicitud (2 cols y cae a 1) */
+.ct-app .ct-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.75rem; /* similar a ns-services-grid */
+}
+
+@media (max-width: 1100px) {
+  .ct-app .ct-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ct-app .ct-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.ct-app .ct-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+/* Responsive Grid */
+@media (max-width: 1024px) {
+  .ct-app .ct-grid-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .ct-app .ct-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .ct-app .ct-grid-4,
+  .ct-app .ct-grid-3 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ================================
+   SPACING HELPERS
+================================ */
+.ct-app .ct-gap-1 { gap: 0.25rem !important; }
+.ct-app .ct-gap-2 { gap: 0.5rem !important; }
+.ct-app .ct-gap-4 { gap: 1rem !important; }
+.ct-app .ct-gap-6 { gap: 1.5rem !important; }
+
+.ct-app .ct-mt-2 { margin-top: 0.5rem !important; }
+.ct-app .ct-mt-4 { margin-top: 1rem !important; }
+.ct-app .ct-mt-6 { margin-top: 1.5rem !important; }
+.ct-app .ct-mt-8 { margin-top: 2rem !important; }
+
+.ct-app .ct-mb-2 { margin-bottom: 0.5rem !important; }
+.ct-app .ct-mb-4 { margin-bottom: 1rem !important; }
+.ct-app .ct-mb-6 { margin-bottom: 1.5rem !important; }
+.ct-app .ct-mb-8 { margin-bottom: 2rem !important; }
+
+/* ================================
+   NAVBAR BASE
+================================ */
+.ct-app .ct-navbar {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* ================================
+   UTILITIES
+================================ */
+.ct-app .ct-text-right { text-align: right; }
+.ct-app .ct-text-center { text-align: center; }
+.ct-app .ct-w-full { width: 100%; }
+.ct-app .ct-hidden { display: none; }

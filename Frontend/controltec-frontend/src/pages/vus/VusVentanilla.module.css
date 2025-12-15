@@ -1,0 +1,313 @@
+/* CSS Modules: VusVentanilla.module.css (aislamiento total para VUS)
+   Copia el contenido de VusVentanilla.css aquí y reemplaza todos los selectores por :local(.vs-*)
+*/
+
+:local(.vs-page-container) {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 2rem 2rem;
+  background-color: var(--vs-bg);
+  min-height: calc(100vh - 64px);
+  font-family: 'Segoe UI', sans-serif;
+  color: var(--vs-text);
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+:local(.vs-header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+:local(.vs-title-group) {
+  display: flex;
+  flex-direction: column;
+}
+
+:local(.vs-title) {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 0.5rem 0;
+}
+
+:local(.vs-subtitle) {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+:local(.vs-btn) {
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+:local(.vs-btn-primary) {
+  background-color: var(--vs-primary);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+}
+
+:local(.vs-btn-details) {
+  background-color: transparent;
+  border: 1px solid #e5e7eb;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+:local(.vs-btn-details:hover) {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+:local(.vs-card) {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.08);
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+  margin-bottom: 2rem;
+}
+
+:local(.vs-card-body) {
+  padding: 1.25rem 1.5rem;
+}
+
+:local(.vs-card-title) {
+  margin: 0 0 0.75rem 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+:local(.vs-table-wrap) {
+  width: 100%;
+  overflow-x: auto;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(15,23,42,0.08);
+  border: 1px solid #e0e0e0;
+}
+
+:local(.vs-table) {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.95rem;
+  background: #fff;
+}
+
+:local(.vs-table th),
+:local(.vs-table td) {
+  padding: 1rem 1.5rem;
+  text-align: left;
+}
+
+:local(.vs-table th) {
+  font-weight: 600;
+  color: #4b5563;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+:local(.vs-table) tbody tr:nth-child(even) {
+  background: #f9fafb;
+}
+
+:local(.vs-table tbody tr:hover) {
+  background: #f3f4f6;
+}
+
+:local(.vs-badge) {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+:local(.vs-badge-neutral) {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+:local(.vs-loading), :local(.vs-empty), :local(.vs-error) {
+  text-align: center;
+  padding: 3rem;
+  color: #666;
+}
+
+:local(.vs-error) {
+  color: red;
+}
+
+
+:local(.vs-header) {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+:local(.vs-title-group) {
+  display: flex;
+  flex-direction: column;
+}
+
+:local(.vs-title) {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: #1a202c;
+  margin: 0 0 0.5rem 0;
+}
+
+:local(.vs-subtitle) {
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+:local(.vs-btn) {
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+:local(.vs-btn-primary) {
+  background-color: var(--vs-primary);
+  color: #fff;
+  padding: 0.6rem 1.2rem;
+  font-size: 0.9rem;
+}
+
+:local(.vs-btn-details) {
+  background-color: transparent;
+  border: 1px solid #e5e7eb;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  color: #374151;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+:local(.vs-btn-details:hover) {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+:local(.vs-card) {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  border: 1px solid #e0e0e0;
+  overflow: hidden;
+}
+
+:local(.vs-card-body) {
+  padding: 1rem 1.25rem;
+}
+
+:local(.vs-card-title) {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1a202c;
+}
+
+:local(.vs-table-wrap) {
+  width: 100%;
+  overflow-x: auto;
+}
+
+:local(.vs-table) {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+:local(.vs-table thead) {
+  background-color: var(--vs-primary);
+  color: #fff;
+}
+
+:local(.vs-table th) {
+  padding: 1rem 1.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+  background-color: var(--vs-primary);
+  color: #fff;
+  border: none;
+}
+
+:local(.vs-table td) {
+  padding: 1.25rem 1.5rem;
+  color: #4b5563;
+  font-size: 0.9rem;
+  vertical-align: middle;
+  background-color: transparent;
+}
+
+:local(.vs-table tbody tr) {
+  border-bottom: 1px solid #f0f0f0;
+  transition: background 0.1s;
+}
+
+:local(.vs-table tbody tr:hover) {
+  background-color: #f8fbff;
+}
+
+:local(.vs-badge) {
+  display: inline-block;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  min-width: 80px;
+}
+
+:local(.vs-badge-neutral) {
+  background-color: #f3f4f6;
+  color: #374151;
+}
+
+:local(.vs-loading), :local(.vs-empty), :local(.vs-error) {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+}
+
+:local(.vs-error) {
+  color: red;
+}
