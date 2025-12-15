@@ -1,0 +1,46 @@
+/* src/components/WelcomeBanner.css */
+.welcome-banner {
+    background: linear-gradient(90deg, #16a34a 0%, #15803d 100%);
+    /* Degradado verde elegante */
+    color: white;
+    padding: 12px 2rem;
+    font-size: 1rem;
+    font-weight: 500;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    animation: slideDown 0.4s ease-out;
+}
+
+.welcome-content {
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.welcome-text {
+    font-size: 1.05rem;
+}
+
+.welcome-name {
+    font-weight: 700;
+    color: #dcfce7;
+    /* Verde muy claro para resaltar el nombre */
+}
+
+/* Animación suave de entrada */
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

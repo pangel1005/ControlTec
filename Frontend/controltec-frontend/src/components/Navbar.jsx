@@ -1,7 +1,8 @@
 // src/components/Navbar.jsx
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import "./Navbar.css"; // Import new styles
+import NotificationBell from "./NotificationBell"; // Importamos la campana
+import "./Navbar.css";
 
 export default function Navbar() {
   const { usuario, logout } = useAuth();
@@ -93,6 +94,9 @@ export default function Navbar() {
             )}
 
             <div className="navbar-divider"></div>
+
+            {/* Notifications - Only for Solicitante */}
+            {rol === "Solicitante" && <NotificationBell />}
 
             {/* User Info */}
             <div className="navbar-user">

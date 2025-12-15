@@ -611,6 +611,46 @@ namespace ControlTec.Controllers
             };
 
             _context.HistorialEstados.Add(nuevoHistorial);
+            // await _context.SaveChangesAsync(); // <-- COMENTADO PARA HACER TODO JUNTO
+
+            // ===============================================
+            // 🔹 CREACIÓN AUTOMÁTICA DE NOTIFICACIÓN
+            // ===============================================
+            if (solicitud.UsuarioId != userId) // Si quien cambia no es el mismo dueño (ej: VUS cambia tu solicitud)
+            {
+                var notificacion = new Notificacion
+                {
+                    UsuarioId = solicitud.UsuarioId,
+                    SolicitudId = solicitud.Id,
+                    Titulo = $"Solicitud #{solicitud.Id} Actualizada",
+                    Mensaje = $"El estado ha cambiado a: {estadoNuevo}.",
+                    Tipo = "Info", // Por defecto
+                    Fecha = DateTime.Now,
+                    Leido = false
+                };
+
+                // Personalizar mensaje/tipo según estado
+                if (estadoNuevo == EstadosSolicitud.Rechazada || estadoNuevo == EstadosSolicitud.RechazadaET)
+                {
+                    notificacion.Tipo = "Alerta";
+                    notificacion.Titulo = "Solicitud Rechazada";
+                }
+                else if (estadoNuevo == EstadosSolicitud.Aprobada)
+                {
+                    notificacion.Tipo = "Exito";
+                    notificacion.Titulo = "¡Solicitud Aprobada!";
+                    notificacion.Mensaje = "Tu solicitud ha sido aprobada. Pronto podrás descargar el certificado.";
+                }
+                else if (estadoNuevo == EstadosSolicitud.Devuelta)
+                {
+                    notificacion.Tipo = "Alerta";
+                    notificacion.Titulo = "Solicitud Devuelta";
+                    notificacion.Mensaje = "Tu solicitud requiere correcciones. Revisa los comentarios.";
+                }
+
+                _context.Notificaciones.Add(notificacion);
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok(new

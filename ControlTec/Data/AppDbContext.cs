@@ -20,7 +20,7 @@ namespace ControlTec.Data
 
         public DbSet<RespuestaFormularioDigital> RespuestasFormulariosDigitales { get; set; } = null!;
 
-
+        public DbSet<Notificacion> Notificaciones { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

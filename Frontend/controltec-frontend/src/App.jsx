@@ -8,6 +8,7 @@ import {
 } from "react-router-dom";
 
 import Navbar from "./components/Navbar";
+import WelcomeBanner from "./components/WelcomeBanner"; // Importar banner
 
 // Auth
 import Login from "./pages/auth/Login.jsx";
@@ -54,7 +55,12 @@ function AppInner() {
 
   return (
     <>
-      {!isAuthRoute && <Navbar />}
+      {!isAuthRoute && (
+        <>
+          <Navbar />
+          <WelcomeBanner />
+        </>
+      )}
 
       <div className={isAuthRoute ? "" : "page-container"}>
         <Routes>
@@ -192,14 +198,14 @@ function AppInner() {
                 <DireccionDashboard />
               </ProtectedRoute>
             }
-/>
+          />
           {/* Redirecciones */}
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </div>
     </>
-    
+
   );
 }
 
